@@ -1093,9 +1093,12 @@
      d'exposition (moins de clics curieux déclenchant le verrou anti-
      bruteforce) et allège l'interface publique. L'accès reste possible via
      le lien secret (#artist=...) ou un appareil déjà mémorisé — voir
-     tryAutoUnlockArtist(). Reste visible une fois en mode artiste, pour
-     permettre de repasser en aperçu public sans perdre la session. */
-  body:not(.artist-mode) .mode-switch{ display:none !important; }
+     tryAutoUnlockArtist(). Reste visible en mode artiste ET sur tout
+     appareil déjà reconnu (classe posée par tryAutoUnlockArtist, dès qu'un
+     token valide existe) — sinon, passer en aperçu public depuis le mode
+     artiste ferait disparaître le bouton, sans façon d'y revenir autrement
+     qu'en retapant le lien secret depuis zéro. */
+  body:not(.artist-mode):not(.artist-device-recognized) .mode-switch{ display:none !important; }
   .mode-switch{
     position:fixed; top:26px; right:30px; z-index:56;
     display:flex; align-items:center; gap:8px;
@@ -4274,10 +4277,19 @@
   }
 
   async function tryAutoUnlockArtist(){
-    if (await tryMagicLinkUnlock()) return;
+    // Marque cet appareil comme "reconnu" dès qu'un token valide existe —
+    // indépendamment du mode affiché à l'instant. Sert à garder le bouton
+    // public/artiste visible même après un passage en aperçu public (voir
+    // CSS `.mode-switch`) : sans ça, repasser en public le ferait
+    // disparaître définitivement pour cette session, sans façon d'y revenir
+    // autrement qu'en retapant le lien secret depuis le début.
     let token;
     try{ token = JSON.parse(localStorage.getItem(DEVICE_TOKEN_KEY) || 'null'); }
     catch(e){ token = null; }
+    if (token && token.hash && Date.now() <= token.expires){
+      document.body.classList.add('artist-device-recognized');
+    }
+    if (await tryMagicLinkUnlock()) return;
     if (!token || !token.hash || Date.now() > token.expires){ forgetDevice(); return; }
     const stored = await storageGet('artistPasswordHash', true);
     if (stored && stored === token.hash) setArtistMode(true);
