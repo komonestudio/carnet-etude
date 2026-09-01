@@ -4154,6 +4154,13 @@
   function setArtistMode(on){
     artistMode = on;
     document.body.classList.toggle('artist-mode', artistMode);
+    // Marque cet appareil comme "reconnu" dès qu'il entre en mode artiste,
+    // quelle que soit la méthode (lien secret, mot de passe, token déjà
+    // mémorisé) : garantit que le bouton public/artiste reste visible pour
+    // le reste de la session même après un retour en aperçu public — y
+    // compris la toute première fois qu'un appareil utilise le lien secret,
+    // où aucun token n'existait encore au moment de tryAutoUnlockArtist().
+    if (artistMode) document.body.classList.add('artist-device-recognized');
     modeSwitchBtn.classList.toggle('on', artistMode);
     modeSwitchBtn.setAttribute('aria-pressed', artistMode);
     modeLabel.textContent = artistMode ? 'Artiste' : 'Public';
