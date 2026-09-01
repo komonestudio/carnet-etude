@@ -18,6 +18,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Carnet d'étude">
+<!-- ---- Firebase Realtime Database : stockage réellement partagé entre
+     visiteurs une fois le carnet hébergé hors de l'aperçu Claude.ai (qui
+     fournit sa propre API window.storage, absente sur un site autonome).
+     Voir storageGet/storageSet plus bas, qui basculent automatiquement sur
+     Firebase quand window.storage n'est pas disponible. ---- -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <style>
   :root{
     --margin-1:#f2efe6;
@@ -2646,11 +2653,32 @@
 
 <script>
   /* ============ STOCKAGE PERSISTANT ============
-     Utilise l'API window.storage de l'environnement d'aperçu (persistante,
-     partagée entre visiteurs). Si elle est absente — fichier ouvert hors de
-     l'aperçu Claude.ai — on retombe sur localStorage du navigateur (persiste
-     sur cet appareil uniquement), puis en dernier recours sur une mémoire
-     volatile (le temps de la session). */
+     Utilise en priorité l'API window.storage de l'aperçu Claude.ai
+     (partagée entre visiteurs) quand elle est disponible. Sur un site
+     hébergé de façon autonome (GitHub Pages, etc.), cette API n'existe pas :
+     les données "shared" (partagées entre TOUS les visiteurs — post-it,
+     texte, dessins, couvertures...) passent alors par Firebase Realtime
+     Database. Les données "non-shared" (préférences propres à CE visiteur —
+     ses propres créations, ses likes, sa dernière page lue, le mode sombre)
+     continuent d'utiliser localStorage : rien à partager pour celles-ci,
+     pas besoin de base distante. */
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyABT935OYF_mXCiDe08O7GJC73ciGYuhLw",
+    authDomain: "carnet-etude.firebaseapp.com",
+    databaseURL: "https://carnet-etude-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "carnet-etude",
+    storageBucket: "carnet-etude.firebasestorage.app",
+    messagingSenderId: "418227063786",
+    appId: "1:418227063786:web:1ac4ba84ab19d8fb71c093"
+  };
+  let firebaseDb = null;
+  try{
+    if (!(window.storage && window.storage.get) && window.firebase){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      firebaseDb = firebase.database();
+    }
+  } catch(e){ /* Firebase indisponible (hors-ligne, SDK non chargé…) : on retombera sur localStorage */ }
+
   const memoryFallback = {};
   async function storageGet(key, shared){
     try{
@@ -2659,6 +2687,13 @@
         return res ? res.value : null;
       }
     } catch(e){ /* clé absente ou service indisponible : on continue */ }
+    if (shared && firebaseDb){
+      try{
+        const snap = await firebaseDb.ref('shared/' + key).once('value');
+        const val = snap.val();
+        return val === null || val === undefined ? null : val;
+      } catch(e){ /* Firebase indisponible pour cette lecture : on retombe sur le stockage local */ }
+    }
     try{
       const raw = localStorage.getItem('carnet:' + key);
       if (raw !== null) return raw;
@@ -2672,6 +2707,12 @@
         return true;
       }
     } catch(e){}
+    if (shared && firebaseDb){
+      try{
+        await firebaseDb.ref('shared/' + key).set(value);
+        return true;
+      } catch(e){ /* Firebase indisponible pour cette écriture : on retombe sur le stockage local */ }
+    }
     try{
       localStorage.setItem('carnet:' + key, value);
       return true;
