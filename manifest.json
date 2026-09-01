@@ -2,7 +2,7 @@
   "name": "Carnet d'étude — Corps / Esprit",
   "short_name": "Carnet d'étude",
   "description": "Carnet d'étude interactif — mode artiste",
-  "start_url": "./carnet-artiste.html#artist=REMPLACE_PAR_TON_SECRET",
+  "start_url": "./carnet-artiste.html#artist=beszud-zesmik-Jynjy4",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
