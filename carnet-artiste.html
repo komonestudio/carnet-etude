@@ -3535,6 +3535,7 @@
     try{
       await loadNotebookData();
       renderSpread(spread);
+      setupLiveSync(); // les clés Firebase à écouter dépendent du carnet actif
     } finally {
       switchingNotebook = false;
     }
@@ -4193,6 +4194,7 @@
     renderPostitsForSpread(); // ré-attache les X de suppression selon le mode
     updateNavButtons();
     fitBookToViewport(); // la réserve d'espace en bas change (dock mobile visible ou non)
+    setupLiveSync(); // s'active en public, se coupe en artiste (voir la fonction pour le pourquoi)
   }
 
   modeSwitchBtn.addEventListener('click', () => {
@@ -7838,6 +7840,47 @@
     scheduleHide();
   })();
 
+  // ============ SYNCHRONISATION EN DIRECT (mode public uniquement) ============
+  // Sans base réelle (window.storage / localStorage), le contenu n'était
+  // chargé qu'une fois à l'ouverture de la page — un visiteur devait
+  // recharger pour voir tes modifications. Avec Firebase, on peut écouter
+  // les changements en direct (.on('value')) et re-rendre automatiquement,
+  // exactement comme le ferait un rechargement manuel (on réutilise
+  // loadNotebookData()+renderSpread(), déjà testés, plutôt que de tenter
+  // une fusion fine risquée). Volontairement réservé au mode PUBLIC : en
+  // mode artiste, l'historique annuler/rétablir et l'édition en cours
+  // (frappe, glisser…) sont des états locaux qu'une resynchronisation
+  // distante pourrait écraser — un seul artiste à la fois, donc ce risque
+  // n'a pas lieu d'être couru pour un bénéfice qui ne concerne que toi.
+  const LIVE_SYNC_KEYS = ['postits', 'blocks', 'drawings', 'totalSpreads', 'backgrounds',
+    'backCoverEnabled', 'bookmarkSpread', 'coverFront', 'coverBack', 'envelopeConfig'];
+  let liveSyncRefs = [];
+  let liveSyncTimer = null;
+  function teardownLiveSync(){
+    liveSyncRefs.forEach(({ ref, cb }) => { try{ ref.off('value', cb); } catch(e){} });
+    liveSyncRefs = [];
+    clearTimeout(liveSyncTimer);
+  }
+  function setupLiveSync(){
+    teardownLiveSync();
+    if (artistMode || !firebaseDb) return; // pas de firebaseDb = window.storage natif (aperçu Claude.ai), déjà géré autrement
+    const notebookAtSetup = currentNotebookId;
+    function scheduleReload(){
+      clearTimeout(liveSyncTimer);
+      liveSyncTimer = setTimeout(async () => {
+        if (artistMode || currentNotebookId !== notebookAtSetup) return; // état obsolète, un nouveau setup a pris le relais
+        await loadNotebookData();
+        renderSpread(spread);
+      }, 400); // regroupe les changements rapprochés (plusieurs clés écrites pour une même action)
+    }
+    LIVE_SYNC_KEYS.forEach(suffix => {
+      const ref = firebaseDb.ref('shared/' + suffix + ':' + notebookAtSetup);
+      const cb = () => scheduleReload();
+      ref.on('value', cb);
+      liveSyncRefs.push({ ref, cb });
+    });
+  }
+
   (async function init(){
     document.body.classList.toggle('single-page-mode', singlePageMode);
     fitBookToViewport();
@@ -7849,6 +7892,7 @@
     updateSinglePageView();
     fitBookToViewport();
     await tryAutoUnlockArtist();
+    setupLiveSync(); // no-op si finalement en mode artiste (voir tryAutoUnlockArtist ci-dessus)
     // Indice de bienvenue, une seule fois par visiteur/appareil (mode public
     // uniquement) : réutilise le système de toast existant, rien de neuf à
     // construire. Disparaît de lui-même après quelques secondes.
