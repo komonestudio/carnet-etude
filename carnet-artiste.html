@@ -868,6 +868,12 @@
     box-shadow: 0 10px 24px rgba(20,17,10,.28), 0 2px 6px rgba(20,17,10,.2);
     display:flex; align-items:center; justify-content:center;
     transition: transform .15s ease;
+    /* Safari/WebKit a un bug connu où mix-blend-mode sur un calque de fond
+       (voir body::before, grain papier) peut faire disparaître des éléments
+       position:fixed situés au-dessus, selon l'ordre de composition —
+       absent de Chrome/Firefox. isolation:isolate force ce bouton dans son
+       propre contexte d'empilement, indépendant du blend-mode ambiant. */
+    isolation: isolate;
   }
   .zoom-float-btn:hover{ transform: translateY(-2px) scale(1.03); }
   .zoom-float-btn.active{ background: linear-gradient(155deg, #2f3c50, var(--esprit)); }
