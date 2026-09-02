@@ -2533,15 +2533,15 @@
   </button>
 
   <!-- ============ ZOOM : nouveau rôle, flottant en bas à droite, commun aux deux modes ============ -->
-  <button class="zoom-float-btn" id="zoomFloatBtn" type="button" aria-label="Zoom">
+  <button class="zoom-float-btn" id="zoomFloatBtn" type="button" aria-label="Zoom" title="Zoomer / déplacer la vue du carnet">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M9 11h4M11 9v4"/></svg>
   </button>
   <div class="zoom-float-panel" id="zoomFloatPanel">
     <div class="tool-row">
-      <button class="tool-btn" id="zoomOutBtn" type="button" aria-label="Zoom arrière">
+      <button class="tool-btn" id="zoomOutBtn" type="button" aria-label="Zoom arrière" title="Zoom arrière">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/></svg>
       </button>
-      <button class="tool-btn" id="zoomInBtn" type="button" aria-label="Zoom avant">
+      <button class="tool-btn" id="zoomInBtn" type="button" aria-label="Zoom avant" title="Zoom avant">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg>
       </button>
     </div>
@@ -2552,16 +2552,16 @@
 
   <!-- ============ BARRE PUBLIQUE : Carnet + Post-it, flottante, bas centre ============ -->
   <div class="public-toolbar" id="publicToolbar">
-    <button class="dock-btn" id="publicCarnetBtn" type="button" aria-label="Changer de carnet">
+    <button class="dock-btn" id="publicCarnetBtn" type="button" aria-label="Changer de carnet" title="Changer de carnet">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 5.5C5 4.2 8 4 12 5v14c-4-1-7-.8-9 .5V5.5Z"/><path d="M21 5.5C19 4.2 16 4 12 5v14c4-1 7-.8 9 .5V5.5Z"/></svg>
     </button>
-    <button class="dock-btn" id="publicPostitBtn" type="button" aria-label="Déposer un post-it">
+    <button class="dock-btn" id="publicPostitBtn" type="button" aria-label="Déposer un post-it" title="Déposer un post-it sur cette page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11l3 3v13H5V4Z"/><path d="M16 4v3h3"/></svg>
     </button>
-    <button class="dock-btn" id="publicBookmarkBtn" type="button" aria-label="Aller au signet" style="display:none;">
+    <button class="dock-btn" id="publicBookmarkBtn" type="button" aria-label="Aller au signet" title="Aller à la page marquée" style="display:none;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
     </button>
-    <button class="dock-btn" id="publicSilentBtn" type="button" aria-label="Lecture silencieuse" aria-pressed="false">
+    <button class="dock-btn" id="publicSilentBtn" type="button" aria-label="Lecture silencieuse" title="Masquer les post-it pour une lecture sans distraction" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
     </button>
   </div>
@@ -2633,11 +2633,11 @@
   </div>
 
   <div class="page-nav">
-    <button class="page-nav__arrow" id="prevBtn" aria-label="Page précédente">
+    <button class="page-nav__arrow" id="prevBtn" aria-label="Page précédente" title="Page précédente">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <span class="page-nav__indicator" id="pageIndicator">2 – 3</span>
-    <button class="page-nav__arrow" id="nextBtn" aria-label="Page suivante">
+    <button class="page-nav__arrow" id="nextBtn" aria-label="Page suivante" title="Page suivante">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
     </button>
     <button class="page-nav__arrow" id="addPageBtn" aria-label="Ajouter une page" style="display:none;">
@@ -3877,7 +3877,7 @@
     let dragging = false, offX = 0, offY = 0, zone = null;
     el.addEventListener('pointerdown', (e) => {
       if (e.target === textEl && textEl.isContentEditable) return;
-      if (e.target.closest('.postit-comment-btn') || e.target.closest('.postit-like-btn')) return;
+      if (e.target.closest('.postit-comment-btn') || e.target.closest('.postit-like-btn') || e.target.closest('.postit-delete-x')) return;
       pushUndo();
       dragging = true;
       uiDragActive = true;
@@ -3937,7 +3937,7 @@
       if (textEl.isContentEditable){
         textEl.contentEditable = 'false';
         data.edits += 1;
-        data.text = textEl.textContent;
+        data.text = textEl.innerText;
         await persistPostits();
       }
     });
@@ -5814,7 +5814,11 @@
     // (voir exitTextEditMode) pour ne jamais perturber la frappe en cours.
     if (textEl){
       textEl.addEventListener('input', () => {
-        b.text = textEl.textContent;
+        // innerText (pas textContent) : contenteditable insère des <div>/<br>
+        // à chaque Entrée plutôt que de vrais caractères '\n' — textContent
+        // les ignore et recolle tout le texte en une seule ligne. innerText
+        // reflète le rendu visuel réel, retours à la ligne inclus.
+        b.text = textEl.innerText;
         pingArtistTyping();
       });
       textEl.addEventListener('blur', () => {
@@ -5988,7 +5992,7 @@
       const txt = el.querySelector('.block-text');
       if (txt){
         txt.contentEditable = 'false';
-        if (b) b.text = txt.textContent;
+        if (b) b.text = txt.innerText;
       }
       el.classList.remove('editing');
     }
@@ -6197,7 +6201,7 @@
       // calcul du reliquat transmis au maillon suivant continue de tourner
       const isBeingEdited = editingTextBlockId === id;
       if (isBeingEdited){
-        remaining = txt.textContent;
+        remaining = txt.innerText;
       } else {
         const { shown, remainder } = measureFit(txt, remaining, wrap.clientHeight);
         txt.textContent = shown;
