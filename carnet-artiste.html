@@ -3146,8 +3146,23 @@
     envelopeScene.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
 
+  function applyResponsiveTextScale(){
+    document.querySelectorAll('.content-block').forEach(el => {
+      const b = blocksCache.find(x => x.id === el.id);
+      if (b && b.type === 'text'){
+        const txt = el.querySelector('.block-text');
+        if (txt) styleTextEl(txt, b);
+      }
+    });
+    // la taille de police a changé : la place disponible dans chaque cadre
+    // aussi, donc le débordement/chaînage doit être recalculé.
+    const heads = new Set();
+    blocksCache.forEach(b => { if (b.type === 'text' && !b.linkedFrom && b.spread === spread) heads.add(b.id); });
+    heads.forEach(id => redistributeChain(id));
+  }
   function fitBookToViewport(){
     updateEnvelopeScale();
+    applyResponsiveTextScale();
     if (!bookScaleWrap) return;
     if (document.body.classList.contains('single-page-mode')){
       bookScaleWrap.style.transform = 'none';
@@ -5092,8 +5107,21 @@
     // la mise en forme change la place disponible : on recalcule le débordement / chaînage
     if (el) scheduleRedistribute(chainHead(b.id));
   }
+  // Facteur d'échelle du texte en mode mobile/tablette : les blocs gardent
+  // la même taille EN % de la page (b.relW/relH), mais une page plus
+  // étroite (--page-vw) force plus de retours à la ligne à taille de police
+  // fixe (pt), donc plus de hauteur nécessaire — d'où un débordement qui
+  // n'existait pas au moment de la création sur desktop. On réduit donc la
+  // taille affichée proportionnellement à la largeur réelle de la page,
+  // exactement comme pour l'enveloppe (voir updateEnvelopeScale) : jamais
+  // de recalcul de formule dupliqué, on lit la largeur réelle du DOM.
+  function getTextScaleFactor(){
+    if (!document.body.classList.contains('single-page-mode')) return 1;
+    const pageWidthPx = pageLeft.getBoundingClientRect().width || 420;
+    return pageWidthPx / 420; // 420 = largeur de référence desktop (moitié de .book, 840/2)
+  }
   function styleTextEl(txt, b){
-    txt.style.fontSize = b.fontSize + 'pt';
+    txt.style.fontSize = (b.fontSize * getTextScaleFactor()) + 'pt';
     txt.style.fontFamily = b.fontFamily;
     txt.style.color = b.color;
     txt.style.textAlign = b.align;
