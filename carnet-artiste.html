@@ -858,22 +858,30 @@
   .add-postit-btn svg{ width:22px; height:22px; color:#2a2413; }
   .add-postit-btn.active svg{ color:#fff; }
 
-  /* ---- Zoom : nouveau rôle, bouton flottant commun aux deux modes (reprend
-     exactement l'emplacement de l'ancien bouton jaune de post-it) ---- */
-  .zoom-float-btn{
-    position:fixed; top:16px; left:16px; z-index:50;
-    width:52px; height:52px; border-radius:16px;
-    background: linear-gradient(155deg, var(--esprit), #2f3c50);
-    border:none; cursor:pointer;
-    box-shadow: 0 10px 24px rgba(20,17,10,.28), 0 2px 6px rgba(20,17,10,.2);
-    display:flex; align-items:center; justify-content:center;
-    transition: transform .15s ease;
+  /* ---- Zoom + Mode sombre : regroupés dans un vrai dock (même style que
+     .artist-dock / .public-toolbar — pilule sombre verticale), fixe en
+     haut à gauche, identique dans les deux modes et à toutes les tailles
+     d'écran. Remplace deux boutons flottants indépendants, sujets à des
+     conflits de positionnement (chevauchement) selon écran/mode. ---- */
+  .tools-dock{
+    position:fixed; top:16px; left:16px; z-index:56;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:#1b1916; border-radius:999px; padding:10px 8px;
+    box-shadow: 0 18px 40px rgba(20,17,10,.35), 0 2px 8px rgba(20,17,10,.25);
   }
-  .zoom-float-btn:hover{ transform: translateY(-2px) scale(1.03); }
-  .zoom-float-btn.active{ background: linear-gradient(155deg, #2f3c50, var(--esprit)); }
-  .zoom-float-btn svg{ width:21px; height:21px; color:#fff; }
+  .tools-dock .zoom-float-btn{
+    position:static; width:40px; height:40px; border-radius:50%;
+    background:transparent; border:none; cursor:pointer;
+    color: rgba(255,255,255,.62);
+    display:flex; align-items:center; justify-content:center;
+    transition: background .15s ease, color .15s ease;
+    box-shadow:none;
+  }
+  .tools-dock .zoom-float-btn:hover{ color:#fff; background: rgba(255,255,255,.09); transform:none; }
+  .tools-dock .zoom-float-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
+  .tools-dock .zoom-float-btn svg{ width:18px; height:18px; color:currentColor; }
   .zoom-float-panel{
-    position:fixed; top:80px; left:16px; z-index:55;
+    position:fixed; top:100px; left:16px; z-index:55;
     width:172px; background: rgba(252,251,248,.97); border:1px solid rgba(38,35,25,.12);
     backdrop-filter: blur(16px); border-radius:18px; padding:14px;
     box-shadow: 0 24px 50px rgba(20,17,10,.24); display:none;
@@ -1128,7 +1136,7 @@
   body.preview-mode .undo-redo-bar,
   body.preview-mode .visitor-counter,
   body.preview-mode .new-notebook-btn,
-  body.preview-mode .zoom-float-btn,
+  body.preview-mode .tools-dock,
   body.preview-mode .zoom-float-panel{ display:none !important; }
   body.artist-mode.preview-mode .public-toolbar{ display:flex; }
   body.preview-mode .content-block{ pointer-events:none !important; }
@@ -1781,8 +1789,7 @@
        ancrage à droite y entrait en collision avec elles (page-nav en mode
        artiste, ou barre publique à 4 icônes, toutes deux centrées et assez
        larges pour rejoindre le bord droit sur un écran étroit). */
-    /* zoom / mode sombre : position fixe unique (haut gauche), voir CSS de base — plus de repositionnement ici */
-    .zoom-float-panel{ top:80px; left:16px; bottom:auto; right:auto; }
+    .zoom-float-panel{ top:100px; left:16px; bottom:auto; right:auto; }
 
     /* Dock allégé sur mobile : Enveloppe et Signet, moins fréquents, migrent
        dans le menu « + » (raccourcis ajoutés en haut de panelPlus) pour
@@ -1794,13 +1801,12 @@
     /* ---- masquage auto du chrome flottant au repos (lecture) : laisse
        toute la place au carnet quand on ne touche plus l'écran, réapparaît
        instantanément au moindre contact — voir setupChromeAutoHide() ---- */
-    .artist-dock, .public-toolbar, .zoom-float-btn, #darkModeBtn{
+    .artist-dock, .public-toolbar, .tools-dock{
       transition: opacity .35s ease;
     }
     body.chrome-idle .artist-dock,
     body.chrome-idle .public-toolbar,
-    body.chrome-idle .zoom-float-btn,
-    body.chrome-idle #darkModeBtn{
+    body.chrome-idle .tools-dock{
       opacity:.12; pointer-events:none;
     }
 
@@ -1872,10 +1878,6 @@
 </style>
 </head>
 <body>
-
-  <button class="zoom-float-btn" id="darkModeBtn" type="button" aria-label="Mode sombre" data-tooltip="Mode sombre" aria-pressed="false" style="left:78px;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-  </button>
 
   <div class="notebook-selector-wrap">
     <button class="notebook-selector" id="notebookBtn" aria-expanded="false" aria-haspopup="true">
@@ -2568,10 +2570,15 @@
     </svg>
   </button>
 
-  <!-- ============ ZOOM : nouveau rôle, flottant en bas à droite, commun aux deux modes ============ -->
-  <button class="zoom-float-btn" id="zoomFloatBtn" type="button" aria-label="Zoom" data-tooltip="Zoomer / déplacer la vue">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M9 11h4M11 9v4"/></svg>
-  </button>
+  <!-- ============ Dock Zoom + Mode sombre : fixe en haut à gauche, identique dans les deux modes ============ -->
+  <div class="tools-dock">
+    <button class="zoom-float-btn" id="zoomFloatBtn" type="button" aria-label="Zoom" data-tooltip="Zoomer / déplacer la vue">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M9 11h4M11 9v4"/></svg>
+    </button>
+    <button class="zoom-float-btn" id="darkModeBtn" type="button" aria-label="Mode sombre" data-tooltip="Mode sombre" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    </button>
+  </div>
   <div class="zoom-float-panel" id="zoomFloatPanel">
     <div class="tool-row">
       <button class="tool-btn" id="zoomOutBtn" type="button" aria-label="Zoom arrière" title="Zoom arrière">
