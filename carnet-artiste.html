@@ -861,25 +861,19 @@
   /* ---- Zoom : nouveau rôle, bouton flottant commun aux deux modes (reprend
      exactement l'emplacement de l'ancien bouton jaune de post-it) ---- */
   .zoom-float-btn{
-    position:fixed; bottom:28px; right:34px; z-index:50;
+    position:fixed; top:16px; left:16px; z-index:50;
     width:52px; height:52px; border-radius:16px;
     background: linear-gradient(155deg, var(--esprit), #2f3c50);
     border:none; cursor:pointer;
     box-shadow: 0 10px 24px rgba(20,17,10,.28), 0 2px 6px rgba(20,17,10,.2);
     display:flex; align-items:center; justify-content:center;
     transition: transform .15s ease;
-    /* Safari/WebKit a un bug connu où mix-blend-mode sur un calque de fond
-       (voir body::before, grain papier) peut faire disparaître des éléments
-       position:fixed situés au-dessus, selon l'ordre de composition —
-       absent de Chrome/Firefox. isolation:isolate force ce bouton dans son
-       propre contexte d'empilement, indépendant du blend-mode ambiant. */
-    isolation: isolate;
   }
   .zoom-float-btn:hover{ transform: translateY(-2px) scale(1.03); }
   .zoom-float-btn.active{ background: linear-gradient(155deg, #2f3c50, var(--esprit)); }
   .zoom-float-btn svg{ width:21px; height:21px; color:#fff; }
   .zoom-float-panel{
-    position:fixed; bottom:92px; right:34px; z-index:55;
+    position:fixed; top:80px; left:16px; z-index:55;
     width:172px; background: rgba(252,251,248,.97); border:1px solid rgba(38,35,25,.12);
     backdrop-filter: blur(16px); border-radius:18px; padding:14px;
     box-shadow: 0 24px 50px rgba(20,17,10,.24); display:none;
@@ -1787,8 +1781,7 @@
        ancrage à droite y entrait en collision avec elles (page-nav en mode
        artiste, ou barre publique à 4 icônes, toutes deux centrées et assez
        larges pour rejoindre le bord droit sur un écran étroit). */
-    body.artist-mode .zoom-float-btn{ top:16px; left:16px; bottom:auto; right:auto; }
-    body.artist-mode #darkModeBtn{ top:16px; left:78px; right:auto; }
+    /* zoom / mode sombre : position fixe unique (haut gauche), voir CSS de base — plus de repositionnement ici */
     .zoom-float-panel{ top:80px; left:16px; bottom:auto; right:auto; }
 
     /* Dock allégé sur mobile : Enveloppe et Signet, moins fréquents, migrent
@@ -1846,17 +1839,19 @@
      .swipe-hint ci-dessus (texte italique fin, sans encadré ni ombre),
      plutôt qu'une bulle native du navigateur (délai variable, style
      incohérent selon l'OS). Le texte vient de l'attribut data-tooltip posé
-     sur chaque bouton. Positionné à gauche puisque ces boutons vivent sur
-     le bord droit de l'écran (barre publique + zoom + mode sombre).
-     Desktop uniquement : au survol tactile (mobile/tablette), :hover est
-     peu fiable et une bulle collée au bord droit sortirait de l'écran. */
+     sur chaque bouton. La barre publique vit sur le bord droit de l'écran
+     (tooltip à gauche du bouton) ; zoom/mode sombre vivent sur le bord
+     gauche (tooltip à droite du bouton) — sens opposés pour ne jamais
+     sortir de l'écran. Desktop uniquement : au survol tactile (mobile/
+     tablette), :hover est peu fiable et une bulle collée au bord sortirait
+     de l'écran. */
   @media (min-width: 901px){
     .public-toolbar .dock-btn[data-tooltip],
     .zoom-float-btn[data-tooltip]{ position:relative; }
     .public-toolbar .dock-btn[data-tooltip]::after,
     .zoom-float-btn[data-tooltip]::after{
       content: attr(data-tooltip);
-      position:absolute; right:calc(100% + 14px); top:50%;
+      position:absolute; top:50%;
       transform: translateY(-50%);
       white-space:nowrap;
       font-family:'Newsreader', serif; font-style:italic; font-size:12px;
@@ -1865,6 +1860,8 @@
       transition: opacity .2s ease;
       z-index:60;
     }
+    .public-toolbar .dock-btn[data-tooltip]::after{ right:calc(100% + 14px); }
+    .zoom-float-btn[data-tooltip]::after{ left:calc(100% + 14px); }
     body.dark-mode .public-toolbar .dock-btn[data-tooltip]::after,
     body.dark-mode .zoom-float-btn[data-tooltip]::after{
       color: rgba(240,239,233,.6);
@@ -1876,7 +1873,7 @@
 </head>
 <body>
 
-  <button class="zoom-float-btn" id="darkModeBtn" type="button" aria-label="Mode sombre" data-tooltip="Mode sombre" aria-pressed="false" style="right:96px;">
+  <button class="zoom-float-btn" id="darkModeBtn" type="button" aria-label="Mode sombre" data-tooltip="Mode sombre" aria-pressed="false" style="left:78px;">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
   </button>
 
