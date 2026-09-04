@@ -2099,6 +2099,22 @@
         <input type="color" id="blockColorInput" value="#262319">
       </div>
 
+      <label>Mise en forme</label>
+      <div class="tool-row">
+        <button class="tool-btn block-format-btn" data-format="bold" type="button" aria-label="Gras" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 4h7a4 4 0 010 8H6zM6 12h8a4 4 0 010 8H6z"/></svg>
+        </button>
+        <button class="tool-btn block-format-btn" data-format="italic" type="button" aria-label="Italique" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4h6M5 20h6M14 4L9 20"/></svg>
+        </button>
+        <button class="tool-btn block-format-btn" data-format="underline" type="button" aria-label="Souligné" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 3v8a6 6 0 0012 0V3M4 21h16"/></svg>
+        </button>
+        <button class="tool-btn block-format-btn" data-format="highlight" type="button" aria-label="Surligné" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21l3-3M9.5 15.5L18 7a2.1 2.1 0 000-3 2.1 2.1 0 00-3 0l-8.5 8.5M6 12l6 6"/></svg>
+        </button>
+      </div>
+
       <label>Alignement</label>
       <div class="tool-row">
         <button class="tool-btn block-align-btn selected" data-align="left" type="button" aria-label="Aligner à gauche">
@@ -4960,6 +4976,7 @@
   let blockAlign = 'left';
   let blockColumns = 1;
   let blockVAlign = 'top';
+  let blockBold = false, blockItalic = false, blockUnderline = false, blockHighlight = false;
 
   // arme/désarme l'outil texte et bascule le curseur en croix (façon InDesign)
   function setPlacingBlockType(type){
@@ -5172,6 +5189,22 @@
       styleUndoPending = false; // clic discret : la prochaine action ouvre une nouvelle étape
     });
   });
+  const BLOCK_FORMAT_VARS = { bold: 'blockBold', italic: 'blockItalic', underline: 'blockUnderline', highlight: 'blockHighlight' };
+  artistPanel.querySelectorAll('.block-format-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.format;
+      const varName = BLOCK_FORMAT_VARS[key];
+      const newVal = !{ bold: blockBold, italic: blockItalic, underline: blockUnderline, highlight: blockHighlight }[key];
+      if (key === 'bold') blockBold = newVal;
+      else if (key === 'italic') blockItalic = newVal;
+      else if (key === 'underline') blockUnderline = newVal;
+      else if (key === 'highlight') blockHighlight = newVal;
+      btn.classList.toggle('selected', newVal);
+      btn.setAttribute('aria-pressed', String(newVal));
+      applyTextStyleToSelected();
+      styleUndoPending = false;
+    });
+  });
   artistPanel.querySelectorAll('.block-col-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       artistPanel.querySelectorAll('.block-col-btn').forEach(b => b.classList.remove('selected'));
@@ -5223,7 +5256,8 @@
       columns: blockColumns,
       columnGap: parseInt(blockColumnGap.value, 10) || 16,
       padding: parseInt(blockPadding.value, 10) || 8,
-      vAlign: blockVAlign
+      vAlign: blockVAlign,
+      bold: blockBold, italic: blockItalic, underline: blockUnderline, highlight: blockHighlight
     };
   }
   // Regroupe les changements de style consécutifs (curseur glissé, couleur
@@ -5270,6 +5304,13 @@
     txt.style.lineHeight = b.lineHeight;
     txt.style.letterSpacing = b.letterSpacing + 'px';
     txt.style.padding = (b.padding != null ? b.padding : 8) + 'px';
+    txt.style.fontWeight = b.bold ? '700' : '400';
+    txt.style.fontStyle = b.italic ? 'italic' : 'normal';
+    txt.style.textDecoration = b.underline ? 'underline' : 'none';
+    // surlignage appliqué au bloc entier (comme la couleur/police, jamais
+    // au caractère près) : un fond jaune doux façon marqueur, cohérent
+    // avec le reste des réglages de bloc, pas une sélection de texte
+    txt.style.backgroundColor = b.highlight ? 'rgba(247,229,139,.55)' : 'transparent';
   }
 
   function resolveImageSrc(existingSrc){
@@ -6282,9 +6323,15 @@
       blockPadding.value = b.padding != null ? b.padding : 8;
       blockColorInput.value = b.color;
       blockAlign = b.align; blockColumns = b.columns; blockVAlign = b.vAlign || 'top';
+      blockBold = !!b.bold; blockItalic = !!b.italic; blockUnderline = !!b.underline; blockHighlight = !!b.highlight;
       artistPanel.querySelectorAll('.block-align-btn').forEach(x => x.classList.toggle('selected', x.dataset.align === b.align));
       artistPanel.querySelectorAll('.block-col-btn').forEach(x => x.classList.toggle('selected', +x.dataset.cols === b.columns));
       artistPanel.querySelectorAll('.block-valign-btn').forEach(x => x.classList.toggle('selected', x.dataset.valign === blockVAlign));
+      artistPanel.querySelectorAll('.block-format-btn').forEach(x => {
+        const on = !!{ bold: blockBold, italic: blockItalic, underline: blockUnderline, highlight: blockHighlight }[x.dataset.format];
+        x.classList.toggle('selected', on);
+        x.setAttribute('aria-pressed', String(on));
+      });
       openArtistPanel('texte');
     } else if (b && b.type === 'shape'){
       shapeColorInput.value = b.color;
@@ -6348,6 +6395,8 @@
     textMeasurer.style.columnGap = cs.columnGap;
     textMeasurer.style.padding = cs.padding;
     textMeasurer.style.boxSizing = cs.boxSizing;
+    textMeasurer.style.fontWeight = cs.fontWeight;
+    textMeasurer.style.fontStyle = cs.fontStyle;
 
     textMeasurer.textContent = fullText;
     if (textMeasurer.scrollHeight <= limitHeight + 1) return { shown: fullText, remainder: '' };
