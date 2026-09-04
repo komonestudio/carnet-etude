@@ -4755,6 +4755,14 @@
         const horizontal = distY < distX;
         el.classList.toggle('dock-orient-horizontal', horizontal);
         el.classList.toggle('dock-orient-vertical', !horizontal);
+        // la bascule d'orientation change brutalement les dimensions du dock
+        // (ex: 9 icônes en colonne étroite -> même 9 icônes en ligne large) ;
+        // sans reclamper, le dock peut dépasser du bord de l'écran.
+        const r2 = el.getBoundingClientRect();
+        const nx = Math.min(Math.max(r2.left, 4), window.innerWidth - r2.width - 4);
+        const ny = Math.min(Math.max(r2.top, 4), window.innerHeight - r2.height - 4);
+        el.style.left = nx + 'px';
+        el.style.top = ny + 'px';
       }
     }
     el.addEventListener('pointerup', endDrag);
