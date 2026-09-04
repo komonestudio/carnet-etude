@@ -900,6 +900,7 @@
     display:none; flex-direction:column; align-items:center; gap:4px;
     background:#1b1916; border-radius:999px; padding:10px 8px;
     box-shadow: 0 18px 40px rgba(20,17,10,.35), 0 2px 8px rgba(20,17,10,.25);
+    cursor:grab; touch-action:none;
   }
   body:not(.artist-mode) .public-toolbar{ display:flex; }
   .public-toolbar .dock-btn{
@@ -1248,6 +1249,7 @@
     border-radius:999px;
     padding:10px 8px;
     box-shadow: 0 18px 40px rgba(20,17,10,.35), 0 2px 8px rgba(20,17,10,.25);
+    cursor:grab; touch-action:none;
   }
   body.artist-mode .artist-dock{ display:flex; }
   .dock-btn{
@@ -4222,6 +4224,8 @@
     // compris la toute première fois qu'un appareil utilise le lien secret,
     // où aucun token n'existait encore au moment de tryAutoUnlockArtist().
     if (artistMode) document.body.classList.add('artist-device-recognized');
+    if (typeof resetArtistDockPos === 'function') resetArtistDockPos();
+    if (typeof resetPublicToolbarPos === 'function') resetPublicToolbarPos();
     modeSwitchBtn.classList.toggle('on', artistMode);
     modeSwitchBtn.setAttribute('aria-pressed', artistMode);
     modeLabel.textContent = artistMode ? 'Artiste' : 'Public';
@@ -4695,6 +4699,59 @@
   const resetArtistPanelPos = makeDraggablePanel(document.getElementById('artistPanel'), document.querySelector('.artist-panel__head'));
   const resetBlockPanelPos = makeDraggablePanel(document.getElementById('blockPanel'), document.getElementById('blockPanel')?.querySelector('.postit-panel__head'));
   const resetPostitPanelPos = makeDraggablePanel(document.getElementById('postitPanel'), document.getElementById('postitPanel')?.querySelector('.postit-panel__head'));
+
+  // ---- docks entiers déplaçables (barre d'outils artiste, barre publique,
+  // panneau zoom) : pas d'en-tête dédié ici, contrairement aux panneaux —
+  // toute la pilule sert de poignée, avec un seuil de mouvement (6px) pour
+  // ne pas gêner le tap normal sur ses icônes. Un clic qui suit un glisser
+  // est intercepté une seule fois, pour ne pas activer un outil par
+  // accident au relâchement. ----
+  function makeDraggableDock(el){
+    if (!el) return function(){};
+    const THRESH = 6;
+    let startX = 0, startY = 0, offX = 0, offY = 0, dragging = false, moved = false, startRect = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('input, select, textarea')) return;
+      startX = e.clientX; startY = e.clientY;
+      dragging = false; moved = false;
+      startRect = el.getBoundingClientRect();
+      offX = e.clientX - startRect.left;
+      offY = e.clientY - startRect.top;
+      try{ el.setPointerCapture(e.pointerId); } catch(err){}
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!startRect) return;
+      if (!dragging){
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) < THRESH) return;
+        dragging = true; moved = true;
+        el.style.left = startRect.left + 'px';
+        el.style.top = startRect.top + 'px';
+        el.style.right = 'auto'; el.style.bottom = 'auto'; el.style.transform = 'none';
+      }
+      const w = el.offsetWidth, h = el.offsetHeight;
+      const nx = Math.min(Math.max(e.clientX - offX, 4), window.innerWidth - w - 4);
+      const ny = Math.min(Math.max(e.clientY - offY, 4), window.innerHeight - h - 4);
+      el.style.left = nx + 'px';
+      el.style.top = ny + 'px';
+    });
+    function endDrag(e){
+      startRect = null; dragging = false;
+      try{ el.releasePointerCapture(e.pointerId); } catch(err){}
+      if (moved){
+        const blockNextClick = (ce) => { ce.stopPropagation(); ce.preventDefault(); };
+        el.addEventListener('click', blockNextClick, { capture:true, once:true });
+        moved = false;
+      }
+    }
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', endDrag);
+    return function resetDockPosition(){
+      el.style.left = ''; el.style.top = ''; el.style.right = ''; el.style.bottom = ''; el.style.transform = '';
+    };
+  }
+  const resetArtistDockPos = makeDraggableDock(artistDock);
+  const resetPublicToolbarPos = makeDraggableDock(document.getElementById('publicToolbar'));
+  const resetZoomPanelPos = makeDraggableDock(document.getElementById('zoomFloatPanel'));
 
   artistDock.querySelectorAll('.dock-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -6492,6 +6549,7 @@
     const open = zoomFloatPanel.classList.toggle('open');
     zoomFloatBtn.classList.toggle('active', open);
     document.body.classList.toggle('zoom-tool-active', open);
+    if (!open && typeof resetZoomPanelPos === 'function') resetZoomPanelPos();
   });
   zoomInBtn.addEventListener('click', () => setZoom(bookZoom + ZOOM_STEP));
   zoomOutBtn.addEventListener('click', () => setZoom(bookZoom - ZOOM_STEP));
