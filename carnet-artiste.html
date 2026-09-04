@@ -1877,7 +1877,13 @@
     }
     .public-toolbar .dock-btn[data-tooltip]:hover::after,
     .zoom-float-btn[data-tooltip]:hover::after{ opacity:1; }
-  }
+  }  /* Orientation forcée d'un dock déplacé à la main : verticale s'il est
+     lâché près du bord gauche/droit, horizontale près du bord haut/bas —
+     voir makeDraggableDock(). !important nécessaire pour l'emporter sur la
+     règle liée à la largeur d'écran (@media max-width:900px), qui impose
+     sinon flex-direction:row indépendamment de la position réelle. */
+  .dock-orient-vertical{ flex-direction:column !important; }
+  .dock-orient-horizontal{ flex-direction:row !important; }
 </style>
 </head>
 <body>
@@ -4741,12 +4747,21 @@
         const blockNextClick = (ce) => { ce.stopPropagation(); ce.preventDefault(); };
         el.addEventListener('click', blockNextClick, { capture:true, once:true });
         moved = false;
+        // orientation selon le bord le plus proche : verticale si posée près
+        // du bord gauche/droit, horizontale si posée près du bord haut/bas
+        const r = el.getBoundingClientRect();
+        const distX = Math.min(r.left, window.innerWidth - r.right);
+        const distY = Math.min(r.top, window.innerHeight - r.bottom);
+        const horizontal = distY < distX;
+        el.classList.toggle('dock-orient-horizontal', horizontal);
+        el.classList.toggle('dock-orient-vertical', !horizontal);
       }
     }
     el.addEventListener('pointerup', endDrag);
     el.addEventListener('pointercancel', endDrag);
     return function resetDockPosition(){
       el.style.left = ''; el.style.top = ''; el.style.right = ''; el.style.bottom = ''; el.style.transform = '';
+      el.classList.remove('dock-orient-horizontal', 'dock-orient-vertical');
     };
   }
   const resetArtistDockPos = makeDraggableDock(artistDock);
