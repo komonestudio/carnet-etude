@@ -1285,7 +1285,7 @@
     font-family:'Inter', sans-serif;
   }
   .artist-panel.open{ display:block; }
-  .artist-panel__head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .artist-panel__head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; cursor:move; touch-action:none; }
   .artist-panel__head h4{ margin:0; font-size:13px; font-weight:700; color: var(--ink); text-transform:none; letter-spacing:0; }
   .artist-panel__close{
     width:24px; height:24px; border:none; background:rgba(38,35,25,.06);
@@ -4638,9 +4638,57 @@
     activeDockTool = null;
     artistDock.querySelectorAll('.dock-btn').forEach(b => b.classList.remove('active'));
     artistPanel.classList.remove('open');
+    // repart de la position par défaut (CSS) au prochain outil ouvert, plutôt
+    // que de rester où l'artiste l'avait glissé la dernière fois
+    artistPanel.style.left = '';
+    artistPanel.style.top = '';
+    artistPanel.style.right = '';
+    artistPanel.style.bottom = '';
+    artistPanel.style.transform = '';
   }
   function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
   artistPanelClose.addEventListener('click', closeArtistPanel);
+
+  // ---- panneau d'outils déplaçable : glisser l'en-tête le sort de la zone
+  // qu'il recouvre (mobile ou desktop), sans avoir à le refermer pour
+  // interagir avec le carnet en dessous. Position remise à zéro à la
+  // fermeture (voir closeArtistPanel), pour repartir propre au prochain
+  // outil. Écouteurs sur l'en-tête via setPointerCapture, pas sur document
+  // (élément permanent, jamais recréé — mais même pattern que le reste par
+  // cohérence et sécurité). ----
+  (function setupArtistPanelDrag(){
+    const head = document.querySelector('.artist-panel__head');
+    if (!head) return;
+    let dragging = false, offX = 0, offY = 0;
+    head.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.artist-panel__close')) return;
+      dragging = true;
+      const rect = artistPanel.getBoundingClientRect();
+      offX = e.clientX - rect.left;
+      offY = e.clientY - rect.top;
+      // bascule vers un positionnement libre en px, en conservant la place
+      // actuelle à l'écran (sinon un saut visuel au premier pixel de glisser)
+      artistPanel.style.left = rect.left + 'px';
+      artistPanel.style.top = rect.top + 'px';
+      artistPanel.style.right = 'auto';
+      artistPanel.style.bottom = 'auto';
+      artistPanel.style.transform = 'none';
+      try{ head.setPointerCapture(e.pointerId); } catch(err){}
+      e.preventDefault();
+    });
+    head.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const w = artistPanel.offsetWidth, h = artistPanel.offsetHeight;
+      let nx = Math.min(Math.max(e.clientX - offX, 4), window.innerWidth - w - 4);
+      let ny = Math.min(Math.max(e.clientY - offY, 4), window.innerHeight - h - 4);
+      artistPanel.style.left = nx + 'px';
+      artistPanel.style.top = ny + 'px';
+    });
+    head.addEventListener('pointerup', (e) => {
+      dragging = false;
+      try{ head.releasePointerCapture(e.pointerId); } catch(err){}
+    });
+  })();
 
   artistDock.querySelectorAll('.dock-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
