@@ -1012,6 +1012,7 @@
   .postit-panel__head{
     display:flex; align-items:center; justify-content:space-between;
     margin-bottom:14px;
+    cursor:move; touch-action:none;
   }
   .postit-panel__head h3{ margin:0; font-size:15px; font-weight:700; color: var(--ink); }
   .postit-panel__close{
@@ -3763,6 +3764,7 @@
     wordCount.classList.remove('limit');
     updateSubmitState();
     pendingSpot = null;
+    if (typeof resetPostitPanelPos === 'function') resetPostitPanelPos();
   }
   postitPanelClose.addEventListener('click', closePanel);
 
@@ -4638,57 +4640,61 @@
     activeDockTool = null;
     artistDock.querySelectorAll('.dock-btn').forEach(b => b.classList.remove('active'));
     artistPanel.classList.remove('open');
-    // repart de la position par défaut (CSS) au prochain outil ouvert, plutôt
-    // que de rester où l'artiste l'avait glissé la dernière fois
-    artistPanel.style.left = '';
-    artistPanel.style.top = '';
-    artistPanel.style.right = '';
-    artistPanel.style.bottom = '';
-    artistPanel.style.transform = '';
+    if (typeof resetArtistPanelPos === 'function') resetArtistPanelPos();
   }
   function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
   artistPanelClose.addEventListener('click', closeArtistPanel);
 
-  // ---- panneau d'outils déplaçable : glisser l'en-tête le sort de la zone
-  // qu'il recouvre (mobile ou desktop), sans avoir à le refermer pour
-  // interagir avec le carnet en dessous. Position remise à zéro à la
-  // fermeture (voir closeArtistPanel), pour repartir propre au prochain
-  // outil. Écouteurs sur l'en-tête via setPointerCapture, pas sur document
-  // (élément permanent, jamais recréé — mais même pattern que le reste par
-  // cohérence et sécurité). ----
-  (function setupArtistPanelDrag(){
-    const head = document.querySelector('.artist-panel__head');
-    if (!head) return;
+  // ---- panneaux flottants déplaçables : glisser leur en-tête les sort de
+  // la zone qu'ils recouvrent (mobile ou desktop), sans avoir à les
+  // refermer pour interagir avec le carnet en dessous. Position remise à
+  // zéro à la fermeture de chacun, pour repartir propre à la prochaine
+  // ouverture. Écouteurs sur l'en-tête via setPointerCapture, pas sur
+  // document (éléments permanents, jamais recréés — mais même pattern que
+  // le reste par cohérence). Fonction générique, appliquée aux 3 panneaux
+  // du carnet qui partagent cette même mécanique (outils artiste, ajout de
+  // bloc texte/image, création de post-it). ----
+  function makeDraggablePanel(panelEl, headEl){
+    if (!panelEl || !headEl) return;
     let dragging = false, offX = 0, offY = 0;
-    head.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.artist-panel__close')) return;
+    function resetPosition(){
+      panelEl.style.left = '';
+      panelEl.style.top = '';
+      panelEl.style.right = '';
+      panelEl.style.bottom = '';
+      panelEl.style.transform = '';
+    }
+    headEl.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.artist-panel__close, .postit-panel__close')) return;
       dragging = true;
-      const rect = artistPanel.getBoundingClientRect();
+      const rect = panelEl.getBoundingClientRect();
       offX = e.clientX - rect.left;
       offY = e.clientY - rect.top;
-      // bascule vers un positionnement libre en px, en conservant la place
-      // actuelle à l'écran (sinon un saut visuel au premier pixel de glisser)
-      artistPanel.style.left = rect.left + 'px';
-      artistPanel.style.top = rect.top + 'px';
-      artistPanel.style.right = 'auto';
-      artistPanel.style.bottom = 'auto';
-      artistPanel.style.transform = 'none';
-      try{ head.setPointerCapture(e.pointerId); } catch(err){}
+      panelEl.style.left = rect.left + 'px';
+      panelEl.style.top = rect.top + 'px';
+      panelEl.style.right = 'auto';
+      panelEl.style.bottom = 'auto';
+      panelEl.style.transform = 'none';
+      try{ headEl.setPointerCapture(e.pointerId); } catch(err){}
       e.preventDefault();
     });
-    head.addEventListener('pointermove', (e) => {
+    headEl.addEventListener('pointermove', (e) => {
       if (!dragging) return;
-      const w = artistPanel.offsetWidth, h = artistPanel.offsetHeight;
+      const w = panelEl.offsetWidth, h = panelEl.offsetHeight;
       let nx = Math.min(Math.max(e.clientX - offX, 4), window.innerWidth - w - 4);
       let ny = Math.min(Math.max(e.clientY - offY, 4), window.innerHeight - h - 4);
-      artistPanel.style.left = nx + 'px';
-      artistPanel.style.top = ny + 'px';
+      panelEl.style.left = nx + 'px';
+      panelEl.style.top = ny + 'px';
     });
-    head.addEventListener('pointerup', (e) => {
+    headEl.addEventListener('pointerup', (e) => {
       dragging = false;
-      try{ head.releasePointerCapture(e.pointerId); } catch(err){}
+      try{ headEl.releasePointerCapture(e.pointerId); } catch(err){}
     });
-  })();
+    return resetPosition;
+  }
+  const resetArtistPanelPos = makeDraggablePanel(document.getElementById('artistPanel'), document.querySelector('.artist-panel__head'));
+  const resetBlockPanelPos = makeDraggablePanel(document.getElementById('blockPanel'), document.getElementById('blockPanel')?.querySelector('.postit-panel__head'));
+  const resetPostitPanelPos = makeDraggablePanel(document.getElementById('postitPanel'), document.getElementById('postitPanel')?.querySelector('.postit-panel__head'));
 
   artistDock.querySelectorAll('.dock-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -5069,6 +5075,7 @@
     blockPanel.classList.remove('open');
     pendingBlockSpot = null;
     editingBlockId = null;
+    if (typeof resetBlockPanelPos === 'function') resetBlockPanelPos();
   }
   blockPanelClose.addEventListener('click', closeBlockPanel);
 
