@@ -1432,6 +1432,14 @@
     white-space: pre-wrap;
   }
   .block-text[contenteditable="true"]{ cursor:text; }
+  .block-text b, .block-text strong{ font-weight:700; }
+  .block-text i, .block-text em{ font-style:italic; }
+  .block-text mark{
+    background: rgba(247,229,139,.55);
+    color: inherit;
+    border-radius:2px;
+    padding:0 1px;
+  }
   .block-text[contenteditable="true"]:empty::before{
     content:"Tapez votre texte…"; opacity:.4; pointer-events:none;
   }
@@ -5189,11 +5197,61 @@
       styleUndoPending = false; // clic discret : la prochaine action ouvre une nouvelle étape
     });
   });
+  // Mise en forme par sélection de texte, en cours d'édition : s'appuie sur
+  // execCommand (natif du navigateur), qui gère correctement la détection
+  // gras-déjà-actif/désactivation, contrairement à une réimplémentation
+  // maison. Le HTML produit (parfois incohérent selon le navigateur — STRONG
+  // vs B, SPAN à la place de MARK pour le surlignage...) est nettoyé une
+  // fois pour de bon à la sortie d'édition, voir normalizeRichHtml().
+  function trySelectionFormat(cmd){
+    if (!editingTextBlockId) return false;
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
+    const el = document.getElementById(editingTextBlockId);
+    const txt = el?.querySelector('.block-text');
+    if (!txt || !txt.contains(sel.anchorNode)) return false;
+    try{
+      if (cmd === 'highlight'){
+        if (!document.execCommand('hiliteColor', false, 'rgba(247,229,139,.55)')){
+          document.execCommand('backColor', false, 'rgba(247,229,139,.55)');
+        }
+      } else {
+        document.execCommand(cmd, false, null);
+      }
+    } catch(e){ return false; }
+    const b = blocksCache.find(x => x.id === editingTextBlockId);
+    if (b) b.text = txt.innerHTML;
+    pingArtistTyping();
+    return true;
+  }
+  // Reflète l'état réel de la sélection courante sur les boutons (gras actif
+  // si le texte sélectionné l'est déjà, etc.) — queryCommandState n'existe
+  // pas pour le surlignage, ce bouton-là reste donc statique ici.
+  function updateFormatButtonsFromSelection(){
+    ['bold', 'italic', 'underline'].forEach(cmd => {
+      let on = false;
+      try{ on = document.queryCommandState(cmd); } catch(e){}
+      const btn = artistPanel.querySelector(`.block-format-btn[data-format="${cmd}"]`);
+      if (btn){ btn.classList.toggle('selected', on); btn.setAttribute('aria-pressed', String(on)); }
+    });
+  }
+  document.addEventListener('selectionchange', () => {
+    if (!editingTextBlockId) return;
+    const el = document.getElementById(editingTextBlockId);
+    const txt = el?.querySelector('.block-text');
+    const sel = window.getSelection();
+    if (txt && sel && sel.anchorNode && txt.contains(sel.anchorNode)) updateFormatButtonsFromSelection();
+  });
+
   const BLOCK_FORMAT_VARS = { bold: 'blockBold', italic: 'blockItalic', underline: 'blockUnderline', highlight: 'blockHighlight' };
   artistPanel.querySelectorAll('.block-format-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.format;
-      const varName = BLOCK_FORMAT_VARS[key];
+      // priorité à la sélection de texte en cours d'édition (comportement
+      // attendu d'un traitement de texte) ; sinon, repli sur la bascule de
+      // tout le bloc (utile pour préparer le style avant de taper, ou pour
+      // un court texte entièrement en gras/italique).
+      if (trySelectionFormat(key)) return;
       const newVal = !{ bold: blockBold, italic: blockItalic, underline: blockUnderline, highlight: blockHighlight }[key];
       if (key === 'bold') blockBold = newVal;
       else if (key === 'italic') blockItalic = newVal;
@@ -5865,7 +5923,7 @@
       textEl = document.createElement('div');
       textEl.className = 'block-text';
       styleTextEl(textEl, b);
-      textEl.textContent = b.text;
+      textEl.innerHTML = b.text;
       wrapEl.appendChild(textEl);
       el.appendChild(wrapEl);
     } else if (b.type === 'image'){
@@ -6065,11 +6123,11 @@
     // (voir exitTextEditMode) pour ne jamais perturber la frappe en cours.
     if (textEl){
       textEl.addEventListener('input', () => {
-        // innerText (pas textContent) : contenteditable insère des <div>/<br>
-        // à chaque Entrée plutôt que de vrais caractères '\n' — textContent
-        // les ignore et recolle tout le texte en une seule ligne. innerText
-        // reflète le rendu visuel réel, retours à la ligne inclus.
-        b.text = textEl.innerText;
+        // innerHTML brut pendant la frappe (jamais normalisé ici : réécrire
+        // le DOM en cours d'édition ferait sauter le curseur). La
+        // normalisation propre (voir normalizeRichHtml) n'a lieu qu'à la
+        // sortie d'édition, une fois la frappe terminée.
+        b.text = textEl.innerHTML;
         pingArtistTyping();
       });
       textEl.addEventListener('blur', () => {
@@ -6234,6 +6292,60 @@
     sel.removeAllRanges();
     sel.addRange(range);
   }
+  // ============ Texte riche (gras/italique/souligné/surligné par sélection) ============
+  // Le navigateur produit un HTML pas toujours cohérent selon qu'on utilise
+  // Chrome/Safari/Firefox (STRONG vs B, SPAN avec style inline pour le
+  // surlignage, etc.). On normalise vers un jeu de balises fixe et minimal
+  // (b/i/u/mark/br/div + texte), à la fois pour garder un stockage propre
+  // et prévisible (partagé via Firebase, affiché chez tous les visiteurs)
+  // et pour simplifier tout le reste du système (mesure/débordement).
+  // Volontairement appelée seulement à la SORTIE d'édition (jamais pendant
+  // la frappe, voir le commentaire sur l'écouteur 'input' plus haut) : ça
+  // réécrit le DOM, ce qui ferait sauter le curseur en cours de frappe.
+  function normalizeRichHtml(html){
+    const src = document.createElement('div');
+    src.innerHTML = html;
+    const out = document.createElement('div');
+    function impliesBold(el){ const w = el.style.fontWeight; return w === 'bold' || w === '700' || (parseInt(w, 10) || 0) >= 600; }
+    function impliesItalic(el){ return el.style.fontStyle === 'italic'; }
+    function impliesUnderline(el){ return /underline/.test(el.style.textDecoration || el.style.textDecorationLine || ''); }
+    function impliesHighlight(el){ const bg = el.style.backgroundColor; return !!bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)'; }
+    const TAG_ALIAS = { STRONG: 'B', B: 'B', EM: 'I', I: 'I', U: 'U' };
+    function convert(node, parent){
+      Array.from(node.childNodes).forEach(c => {
+        if (c.nodeType === 3){ parent.appendChild(document.createTextNode(c.nodeValue)); return; }
+        if (c.nodeType !== 1) return;
+        const tag = c.tagName;
+        if (tag === 'BR'){ parent.appendChild(document.createElement('br')); return; }
+        if (tag === 'DIV' || tag === 'P'){
+          const div = document.createElement('div');
+          parent.appendChild(div);
+          convert(c, div);
+          return;
+        }
+        const wraps = [];
+        const alias = TAG_ALIAS[tag];
+        if (alias) wraps.push(alias);
+        else if (tag === 'SPAN' || tag === 'FONT'){
+          if (impliesBold(c)) wraps.push('B');
+          if (impliesItalic(c)) wraps.push('I');
+          if (impliesUnderline(c)) wraps.push('U');
+          if (impliesHighlight(c)) wraps.push('MARK');
+        }
+        if (wraps.length === 0){ convert(c, parent); return; } // balise/enveloppe sans effet utile : on garde le contenu, pas le conteneur
+        let target = parent;
+        wraps.forEach(t => {
+          const wrapEl = document.createElement(t.toLowerCase());
+          target.appendChild(wrapEl);
+          target = wrapEl;
+        });
+        convert(c, target);
+      });
+    }
+    convert(src, out);
+    return out.innerHTML;
+  }
+
   function exitTextEditMode(){
     if (!editingTextBlockId) return;
     const id = editingTextBlockId;
@@ -6243,7 +6355,10 @@
       const txt = el.querySelector('.block-text');
       if (txt){
         txt.contentEditable = 'false';
-        if (b) b.text = txt.innerText;
+        if (b){
+          b.text = normalizeRichHtml(txt.innerHTML);
+          txt.innerHTML = b.text; // ré-applique la version propre (sûr ici, l'édition est terminée)
+        }
       }
       el.classList.remove('editing');
     }
@@ -6382,8 +6497,52 @@
   });
   document.body.appendChild(textMeasurer);
 
-  function measureFit(refTxtEl, fullText, limitHeight){
-    if (!fullText) return { shown: '', remainder: '' };
+  // Compte les caractères de texte "brut" contenus dans un nœud (balises
+  // ignorées, seul le vrai texte compte pour la coupe au mot entier).
+  function countPlainChars(node){
+    let n = 0;
+    node.childNodes.forEach(c => {
+      if (c.nodeType === 3) n += c.nodeValue.length;
+      else if (c.nodeType === 1) n += countPlainChars(c);
+    });
+    return n;
+  }
+  // Tronque un arbre DOM (clone détaché) pour ne garder que les `limit`
+  // premiers caractères de texte, en conservant toute la structure de
+  // balises valide (jamais coupé en plein milieu d'un <b>, <i>...). Le
+  // reliquat retiré est renvoyé à part, en HTML.
+  // Limite connue : si la coupe tombe en plein milieu d'une mise en forme
+  // imbriquée (ex: "un mot **en gr|as**" coupé pile dans le gras), le
+  // reliquat reperd cette mise en forme au niveau du mot coupé — cas rare,
+  // sans casse visuelle grave, accepté pour cette première version.
+  function truncateHtmlToChars(sourceRoot, limit){
+    const clone = sourceRoot.cloneNode(true);
+    let remaining = limit, cutHappened = false;
+    const remainderNodes = [];
+    function walk(node){
+      Array.from(node.childNodes).forEach(c => {
+        if (cutHappened){ remainderNodes.push(c); node.removeChild(c); return; }
+        if (c.nodeType === 3){
+          const len = c.nodeValue.length;
+          if (len <= remaining){ remaining -= len; }
+          else {
+            const remainderText = c.nodeValue.slice(remaining);
+            c.nodeValue = c.nodeValue.slice(0, remaining);
+            remaining = 0; cutHappened = true;
+            if (remainderText) remainderNodes.push(document.createTextNode(remainderText));
+          }
+        } else if (c.nodeType === 1){
+          walk(c);
+        }
+      });
+    }
+    walk(clone);
+    const remainderRoot = document.createElement('div');
+    remainderNodes.forEach(n => remainderRoot.appendChild(n));
+    return { shownHtml: clone.innerHTML, remainderHtml: remainderRoot.innerHTML };
+  }
+  function measureFit(refTxtEl, fullHtml, limitHeight){
+    if (!fullHtml) return { shown: '', remainder: '' };
     const cs = getComputedStyle(refTxtEl);
     textMeasurer.style.width = refTxtEl.clientWidth + 'px';
     textMeasurer.style.fontFamily = cs.fontFamily;
@@ -6398,22 +6557,34 @@
     textMeasurer.style.fontWeight = cs.fontWeight;
     textMeasurer.style.fontStyle = cs.fontStyle;
 
-    textMeasurer.textContent = fullText;
-    if (textMeasurer.scrollHeight <= limitHeight + 1) return { shown: fullText, remainder: '' };
+    const sourceRoot = document.createElement('div');
+    sourceRoot.innerHTML = fullHtml;
+    const totalLen = countPlainChars(sourceRoot);
 
-    let lo = 0, hi = fullText.length, best = 0;
+    textMeasurer.innerHTML = fullHtml;
+    if (textMeasurer.scrollHeight <= limitHeight + 1) return { shown: fullHtml, remainder: '' };
+
+    let lo = 0, hi = totalLen, best = 0;
     while (lo <= hi){
       const mid = (lo + hi) >> 1;
-      textMeasurer.textContent = fullText.slice(0, mid);
+      textMeasurer.innerHTML = truncateHtmlToChars(sourceRoot, mid).shownHtml;
       if (textMeasurer.scrollHeight <= limitHeight + 1){ best = mid; lo = mid + 1; }
       else { hi = mid - 1; }
     }
+    // ajustement au mot entier : recherche du dernier espace dans le texte
+    // brut projeté avant `best`, pour ne jamais couper en pleine syllabe.
     let cut = best;
-    if (cut < fullText.length){
-      const lastSpace = fullText.lastIndexOf(' ', cut);
+    if (cut < totalLen){
+      const plainAtBest = (() => {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = truncateHtmlToChars(sourceRoot, best).shownHtml;
+        return tmp.textContent;
+      })();
+      const lastSpace = plainAtBest.lastIndexOf(' ');
       if (lastSpace > 0) cut = lastSpace + 1;
     }
-    return { shown: fullText.slice(0, cut), remainder: fullText.slice(cut) };
+    const { shownHtml, remainderHtml } = truncateHtmlToChars(sourceRoot, cut);
+    return { shown: shownHtml, remainder: remainderHtml };
   }
 
   function chainHead(id){
@@ -6460,10 +6631,10 @@
       // calcul du reliquat transmis au maillon suivant continue de tourner
       const isBeingEdited = editingTextBlockId === id;
       if (isBeingEdited){
-        remaining = txt.innerText;
+        remaining = txt.innerHTML;
       } else {
         const { shown, remainder } = measureFit(txt, remaining, wrap.clientHeight);
-        txt.textContent = shown;
+        txt.innerHTML = shown;
         if (idx > 0) b.text = shown;
         remaining = remainder;
       }
