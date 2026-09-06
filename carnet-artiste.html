@@ -3331,6 +3331,7 @@
       // bloquer le rendu (fire-and-forget, comme ailleurs dans le code)
       storageSet('lastVisitedSpread:' + currentNotebookId, String(s), false);
     } else {
+      if (typeof renderPostitsForSpread === 'function') renderPostitsForSpread();
       if (typeof renderBlocksForSpread === 'function') renderBlocksForSpread();
     }
     updateNavButtons();
