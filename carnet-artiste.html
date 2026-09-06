@@ -6116,6 +6116,18 @@
         completeLinking(b.id);
         return;
       }
+      // Ce bloc est déjà en cours d'édition : un clic ici ne fait que
+      // repositionner le curseur (comportement natif du contenteditable),
+      // il ne doit surtout pas re-déclencher selectBlock() — sinon l'état
+      // "sélectionné" (poignées visibles) s'ajoute par-dessus l'état
+      // "édition" sans jamais passer par exitTextEditMode(), laissant des
+      // réglages temporaires (colonnes désactivées pendant la frappe, voir
+      // enterTextEditMode) bloqués indéfiniment tant qu'un vrai clic
+      // extérieur ne survient pas.
+      if (editingTextBlockId === b.id) return;
+      // Un AUTRE bloc était en cours d'édition : on le clôt proprement
+      // d'abord (mêmes raisons), avant de sélectionner celui-ci.
+      if (editingTextBlockId && editingTextBlockId !== b.id) exitTextEditMode();
       selectBlock(b.id);
     });
     el.addEventListener('dblclick', (e) => {
@@ -6491,6 +6503,10 @@
       blockColorInput.value = b.color;
       blockAlign = b.align; blockColumns = b.columns; blockVAlign = b.vAlign || 'top';
       blockBold = !!b.bold; blockItalic = !!b.italic; blockUnderline = !!b.underline; blockHighlight = !!b.highlight;
+      // filet de sécurité : réapplique le vrai style (colonnes incluses) au
+      // cas où un état temporaire (ex: colonnes désactivées pendant une
+      // édition mal refermée) serait resté accroché à l'élément.
+      { const selTxt = document.getElementById(id)?.querySelector('.block-text'); if (selTxt) styleTextEl(selTxt, b); }
       artistPanel.querySelectorAll('.block-align-btn').forEach(x => x.classList.toggle('selected', x.dataset.align === b.align));
       artistPanel.querySelectorAll('.block-col-btn').forEach(x => x.classList.toggle('selected', +x.dataset.cols === b.columns));
       artistPanel.querySelectorAll('.block-valign-btn').forEach(x => x.classList.toggle('selected', x.dataset.valign === blockVAlign));
