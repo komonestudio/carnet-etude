@@ -1403,10 +1403,14 @@
   .content-block.editing .block-resize,
   .content-block.editing .block-delete{ display:none; }
   .content-block .block-resize{
-    position:absolute; right:-6px; bottom:-6px; width:12px; height:12px;
-    border-radius:3px; background: var(--esprit); cursor:nwse-resize; display:none;
+    position:absolute; width:12px; height:12px;
+    border-radius:3px; background: var(--esprit); display:none;
     touch-action:none;
   }
+  .content-block .block-resize--br{ right:-6px; bottom:-6px; cursor:nwse-resize; }
+  .content-block .block-resize--tl{ left:-6px; top:-6px; cursor:nwse-resize; }
+  .content-block .block-resize--tr{ right:-6px; top:-6px; cursor:nesw-resize; }
+  .content-block .block-resize--bl{ left:-6px; bottom:-6px; cursor:nesw-resize; }
   .content-block.selected .block-resize{ display:block; }
   .content-block .block-delete{
     position:absolute; top:-11px; right:-11px; width:20px; height:20px; border-radius:50%;
@@ -1827,7 +1831,11 @@
 
     /* cibles tactiles agrandies pour les poignées fines (redimensionnement
        de bloc, suppression) qui sont trop petites pour un doigt sur mobile */
-    .content-block .block-resize{ width:20px; height:20px; right:-9px; bottom:-9px; }
+    .content-block .block-resize{ width:20px; height:20px; }
+    .content-block .block-resize--br{ right:-9px; bottom:-9px; }
+    .content-block .block-resize--tl{ left:-9px; top:-9px; }
+    .content-block .block-resize--tr{ right:-9px; top:-9px; }
+    .content-block .block-resize--bl{ left:-9px; bottom:-9px; }
     .content-block .block-delete{ width:26px; height:26px; }
     .content-block .block-crop{ width:26px; height:26px; }
     .content-block .block-rotate{ width:26px; height:26px; top:-40px; }
@@ -5989,9 +5997,16 @@
     });
     el.appendChild(lockBtn);
 
-    const resizeHandle = document.createElement('div');
-    resizeHandle.className = 'block-resize';
-    el.appendChild(resizeHandle);
+    // 4 poignées de redimensionnement (une par coin, façon InDesign) : le
+    // coin OPPOSÉ à celle qu'on tire reste fixe (ancre), voir
+    // attachResizeHandle() plus bas pour la logique commune aux 4.
+    const resizeHandles = {};
+    ['tl', 'tr', 'bl', 'br'].forEach(corner => {
+      const h = document.createElement('div');
+      h.className = 'block-resize block-resize--' + corner;
+      el.appendChild(h);
+      resizeHandles[corner] = h;
+    });
 
     const rotateHandle = document.createElement('button');
     rotateHandle.type = 'button';
@@ -6157,7 +6172,7 @@
     el.addEventListener('pointerdown', (e) => {
       if (!artistMode) return;
       if (b.locked) return;
-      if (e.target === resizeHandle || e.target.closest('.block-delete') || e.target.closest('.block-overflow') || e.target.closest('.block-unlink') || e.target.closest('.block-crop') || e.target.closest('.block-rotate')) return;
+      if (e.target.closest('.block-resize') || e.target.closest('.block-delete') || e.target.closest('.block-overflow') || e.target.closest('.block-unlink') || e.target.closest('.block-crop') || e.target.closest('.block-rotate')) return;
       if (textEl && textEl.isContentEditable) return;
       if (el.classList.contains('cropping')) return; // en recadrage, le glisser déplace l'image dans son cadre, pas le cadre lui-même
       pushUndo();
@@ -6187,41 +6202,68 @@
       await persistBlocks();
     });
 
-    // redimensionnement
-    let resizing = false;
-    resizeHandle.addEventListener('pointerdown', (e) => {
-      if (!artistMode) return;
-      pushUndo();
-      resizing = true;
-      uiDragActive = true;
-      try{ resizeHandle.setPointerCapture(e.pointerId); } catch(err){}
-      e.preventDefault(); e.stopPropagation();
-    });
-    resizeHandle.addEventListener('pointermove', (e) => {
-      if (!resizing) return;
-      const pageRect = pageEl.getBoundingClientRect();
-      let nw = (e.clientX - pageRect.left) / pageRect.width - b.relX;
-      let nh = (e.clientY - pageRect.top) / pageRect.height - b.relY;
-      nw = Math.min(Math.max(nw, 0.08), 1 - b.relX);
-      nh = Math.min(Math.max(nh, 0.06), 1 - b.relY);
-      el.style.width = (nw * 100) + '%';
-      el.style.height = (nh * 100) + '%';
-      b.relW = nw; b.relH = nh;
-      if (b.type === 'text') scheduleRedistribute(chainHead(b.id));
-      // redimensionner le cadre recadre l'image (façon masque InDesign) sans
-      // jamais la déformer : layoutImageInFrame recalcule juste l'échelle
-      // "cover" et le décalage courant pour la nouvelle taille de cadre.
-      if (b.type === 'image'){
-        layoutImageInFrame(b, el);
-        updateWaveBorder(b, el); // le contour "vague" suit le nouveau périmètre du cadre
+    // redimensionnement — logique commune aux 4 coins : le coin OPPOSÉ à
+    // celui qu'on tire sert d'ancre fixe ; relX/relY/relW/relH se déduisent
+    // simplement de la position de l'ancre et de celle du pointeur.
+    const MIN_W = 0.08, MIN_H = 0.06;
+    Object.entries(resizeHandles).forEach(([corner, handle]) => {
+      let resizing = false, anchorX = 0, anchorY = 0;
+      handle.addEventListener('pointerdown', (e) => {
+        if (!artistMode || b.locked) return;
+        pushUndo();
+        resizing = true;
+        uiDragActive = true;
+        anchorX = (corner === 'tl' || corner === 'bl') ? (b.relX + b.relW) : b.relX;
+        anchorY = (corner === 'tl' || corner === 'tr') ? (b.relY + b.relH) : b.relY;
+        try{ handle.setPointerCapture(e.pointerId); } catch(err){}
+        e.preventDefault(); e.stopPropagation();
+      });
+      handle.addEventListener('pointermove', (e) => {
+        if (!resizing) return;
+        const pageRect = pageEl.getBoundingClientRect();
+        let px = Math.min(Math.max((e.clientX - pageRect.left) / pageRect.width, 0), 1);
+        let py = Math.min(Math.max((e.clientY - pageRect.top) / pageRect.height, 0), 1);
+        // impose une taille minimale en limitant la distance à l'ancre,
+        // dans la bonne direction selon de quel côté on tire
+        if (Math.abs(px - anchorX) < MIN_W) px = anchorX + MIN_W * (px < anchorX ? -1 : 1);
+        if (Math.abs(py - anchorY) < MIN_H) py = anchorY + MIN_H * (py < anchorY ? -1 : 1);
+        b.relX = Math.min(px, anchorX);
+        b.relW = Math.abs(px - anchorX);
+        b.relY = Math.min(py, anchorY);
+        b.relH = Math.abs(py - anchorY);
+        el.style.left = (b.relX * 100) + '%';
+        el.style.top = (b.relY * 100) + '%';
+        el.style.width = (b.relW * 100) + '%';
+        el.style.height = (b.relH * 100) + '%';
+        if (b.type === 'text') scheduleRedistribute(chainHead(b.id));
+        // redimensionner le cadre recadre l'image (façon masque InDesign) sans
+        // jamais la déformer : layoutImageInFrame recalcule juste l'échelle
+        // "cover" et le décalage courant pour la nouvelle taille de cadre.
+        if (b.type === 'image'){
+          layoutImageInFrame(b, el);
+          updateWaveBorder(b, el); // le contour "vague" suit le nouveau périmètre du cadre
+        }
+      });
+      handle.addEventListener('pointerup', async (e) => {
+        if (!resizing) return;
+        resizing = false;
+        uiDragActive = false;
+        try{ handle.releasePointerCapture(e.pointerId); } catch(err){}
+        await persistBlocks();
+      });
+      handle.addEventListener('pointercancel', () => { resizing = false; uiDragActive = false; });
+      // double-clic sur une poignée : ajuste automatiquement la hauteur du
+      // bloc pour contenir tout son texte, sans coupure — évite d'avoir à
+      // tirer manuellement, et supprime le débordement (chaînage) non
+      // désiré quand il ne s'agit que d'un texte un peu trop long pour la
+      // taille de cadre choisie au départ.
+      if (b.type === 'text'){
+        handle.addEventListener('dblclick', async (e) => {
+          if (!artistMode || b.locked) return;
+          e.stopPropagation();
+          fitTextBlockToContent(b, el);
+        });
       }
-    });
-    resizeHandle.addEventListener('pointerup', async (e) => {
-      if (!resizing) return;
-      resizing = false;
-      uiDragActive = false;
-      try{ resizeHandle.releasePointerCapture(e.pointerId); } catch(err){}
-      await persistBlocks();
     });
 
     // ---- rotation libre (poignée au-dessus du bloc) ----
@@ -6540,6 +6582,38 @@
     const remainderRoot = document.createElement('div');
     remainderNodes.forEach(n => remainderRoot.appendChild(n));
     return { shownHtml: clone.innerHTML, remainderHtml: remainderRoot.innerHTML };
+  }
+  // Ajuste la hauteur d'un bloc de texte pour contenir TOUT son texte
+  // (b.text — jamais tronqué pour le cadre de tête d'une chaîne, voir
+  // redistributeChain), sans coupure. Appelé au double-clic sur une
+  // poignée de redimensionnement. Ne touche qu'à la hauteur : la largeur
+  // choisie par l'artiste reste inchangée, seul le texte détermine
+  // l'espace vertical nécessaire, marge interne (padding) déjà incluse
+  // puisqu'on mesure directement l'élément .block-text avec son padding.
+  function fitTextBlockToContent(b, el){
+    const txt = el.querySelector('.block-text');
+    if (!txt) return;
+    pushUndo();
+    const cs = getComputedStyle(txt);
+    textMeasurer.style.width = txt.clientWidth + 'px';
+    textMeasurer.style.fontFamily = cs.fontFamily;
+    textMeasurer.style.fontSize = cs.fontSize;
+    textMeasurer.style.lineHeight = cs.lineHeight;
+    textMeasurer.style.letterSpacing = cs.letterSpacing;
+    textMeasurer.style.textAlign = cs.textAlign;
+    textMeasurer.style.columnCount = cs.columnCount;
+    textMeasurer.style.columnGap = cs.columnGap;
+    textMeasurer.style.padding = cs.padding;
+    textMeasurer.style.boxSizing = cs.boxSizing;
+    textMeasurer.style.fontWeight = cs.fontWeight;
+    textMeasurer.style.fontStyle = cs.fontStyle;
+    textMeasurer.innerHTML = b.text || '';
+    const pageRect = pageElForSide(b.side).getBoundingClientRect();
+    const neededHeightPx = textMeasurer.scrollHeight;
+    b.relH = Math.min(1 - b.relY, Math.max(0.06, neededHeightPx / pageRect.height));
+    el.style.height = (b.relH * 100) + '%';
+    scheduleRedistribute(chainHead(b.id));
+    persistBlocks();
   }
   function measureFit(refTxtEl, fullHtml, limitHeight){
     if (!fullHtml) return { shown: '', remainder: '' };
