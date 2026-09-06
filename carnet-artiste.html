@@ -6326,6 +6326,14 @@
     el.classList.add('editing');
     el.classList.remove('selected');
     txt.contentEditable = 'true';
+    // Bug connu des navigateurs : la mise en page multi-colonnes
+    // (column-count) ne s'affiche pas correctement sur un élément
+    // contenteditable — d'où la différence public (jamais éditable) /
+    // artiste (éditable pendant la frappe). On bascule donc temporairement
+    // en 1 colonne le temps de l'édition, et on rétablit le vrai réglage à
+    // la sortie (voir exitTextEditMode) : la donnée b.columns n'est jamais
+    // modifiée, seul l'affichage momentané pendant la frappe change.
+    if ((b.columns || 1) > 1) txt.style.columnCount = 1;
     txt.focus();
     // place le curseur à la fin du texte existant (ou dans le cadre vide, tout juste créé)
     const range = document.createRange();
@@ -6401,6 +6409,7 @@
         if (b){
           b.text = normalizeRichHtml(txt.innerHTML);
           txt.innerHTML = b.text; // ré-applique la version propre (sûr ici, l'édition est terminée)
+          txt.style.columnCount = b.columns; // rétablit les colonnes désactivées pendant l'édition
         }
       }
       el.classList.remove('editing');
