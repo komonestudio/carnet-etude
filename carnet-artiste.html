@@ -6634,25 +6634,36 @@
     textMeasurer.style.lineHeight = cs.lineHeight;
     textMeasurer.style.letterSpacing = cs.letterSpacing;
     textMeasurer.style.textAlign = cs.textAlign;
-    textMeasurer.style.columnCount = cs.columnCount;
-    textMeasurer.style.columnGap = cs.columnGap;
     textMeasurer.style.padding = cs.padding;
     textMeasurer.style.boxSizing = cs.boxSizing;
     textMeasurer.style.fontWeight = cs.fontWeight;
     textMeasurer.style.fontStyle = cs.fontStyle;
+    // Le mesureur reste volontairement en 1 seule colonne (jamais
+    // cs.columnCount) : reproduire une vraie mise en page à N colonnes
+    // hors-écran, à hauteur libre, ne "casse" pas de façon fiable d'une
+    // colonne à l'autre puisque rien ne contraint sa hauteur (column-fill
+    // tenterait d'équilibrer, mais de façon peu prévisible). On mesure donc
+    // un long ruban à une seule colonne, et on multiplie simplement la
+    // limite de hauteur par le nombre de colonnes réelles : la capacité
+    // totale d'un bloc à 2 colonnes est environ le double de celle d'une
+    // seule — approximation simple, mais bien plus fidèle que d'ignorer le
+    // nombre de colonnes (qui tronquait le texte comme s'il n'y en avait
+    // qu'une, laissant la 2e colonne quasiment vide).
+    const colCount = Math.max(1, parseInt(cs.columnCount, 10) || 1);
+    const effectiveLimit = limitHeight * colCount;
 
     const sourceRoot = document.createElement('div');
     sourceRoot.innerHTML = fullHtml;
     const totalLen = countPlainChars(sourceRoot);
 
     textMeasurer.innerHTML = fullHtml;
-    if (textMeasurer.scrollHeight <= limitHeight + 1) return { shown: fullHtml, remainder: '' };
+    if (textMeasurer.scrollHeight <= effectiveLimit + 1) return { shown: fullHtml, remainder: '' };
 
     let lo = 0, hi = totalLen, best = 0;
     while (lo <= hi){
       const mid = (lo + hi) >> 1;
       textMeasurer.innerHTML = truncateHtmlToChars(sourceRoot, mid).shownHtml;
-      if (textMeasurer.scrollHeight <= limitHeight + 1){ best = mid; lo = mid + 1; }
+      if (textMeasurer.scrollHeight <= effectiveLimit + 1){ best = mid; lo = mid + 1; }
       else { hi = mid - 1; }
     }
     // ajustement au mot entier : recherche du dernier espace dans le texte
