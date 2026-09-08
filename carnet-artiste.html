@@ -4753,11 +4753,17 @@
   // accident au relâchement. ----
   function makeDraggableDock(el){
     if (!el) return function(){};
-    const THRESH = 6;
-    let startX = 0, startY = 0, offX = 0, offY = 0, dragging = false, moved = false, startRect = null;
+    // Seuil adapté au type de pointeur : un tap au doigt (et parfois au
+    // trackpad) bouge naturellement de quelques pixels sans intention de
+    // glisser — un seuil trop bas (6px) le faisait passer à tort pour un
+    // glissement, bloquant alors le clic qui suit (voir plus bas) et
+    // rendant la barre injoignable au tap.
+    const THRESH_BY_TYPE = { touch: 14, pen: 12, mouse: 8 };
+    let startX = 0, startY = 0, offX = 0, offY = 0, dragging = false, moved = false, startRect = null, threshold = 8;
     el.addEventListener('pointerdown', (e) => {
       if (e.target.closest('input, select, textarea')) return;
       startX = e.clientX; startY = e.clientY;
+      threshold = THRESH_BY_TYPE[e.pointerType] || 8;
       dragging = false; moved = false;
       startRect = el.getBoundingClientRect();
       offX = e.clientX - startRect.left;
@@ -4767,7 +4773,7 @@
     el.addEventListener('pointermove', (e) => {
       if (!startRect) return;
       if (!dragging){
-        if (Math.hypot(e.clientX - startX, e.clientY - startY) < THRESH) return;
+        if (Math.hypot(e.clientX - startX, e.clientY - startY) < threshold) return;
         dragging = true; moved = true;
         el.style.left = startRect.left + 'px';
         el.style.top = startRect.top + 'px';
