@@ -4768,7 +4768,11 @@
       startRect = el.getBoundingClientRect();
       offX = e.clientX - startRect.left;
       offY = e.clientY - startRect.top;
-      try{ el.setPointerCapture(e.pointerId); } catch(err){}
+      // PAS de setPointerCapture ici : la capturer dès le premier contact
+      // (avant même de savoir s'il s'agit d'un tap ou d'un glissement) peut
+      // faire dévier l'événement 'click' natif loin du bouton réellement
+      // touché, empêchant un simple tap d'activer l'outil. La capture
+      // n'intervient donc que plus bas, une fois le glissement confirmé.
     });
     el.addEventListener('pointermove', (e) => {
       if (!startRect) return;
@@ -4778,6 +4782,7 @@
         el.style.left = startRect.left + 'px';
         el.style.top = startRect.top + 'px';
         el.style.right = 'auto'; el.style.bottom = 'auto'; el.style.transform = 'none';
+        try{ el.setPointerCapture(e.pointerId); } catch(err){}
       }
       const w = el.offsetWidth, h = el.offsetHeight;
       const nx = Math.min(Math.max(e.clientX - offX, 4), window.innerWidth - w - 4);
