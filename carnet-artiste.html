@@ -2185,7 +2185,7 @@
         </button>
       </div>
 
-      <div class="tool-hint">Sélectionnez un bloc existant pour modifier son style en direct, ou créez-en un nouveau. Le petit carré rouge signale un débordement de texte : cliquez dessus puis sur un autre cadre pour y faire couler la suite (chaînage). Astuce : Ctrl+D duplique le bloc (texte, image, forme…) actuellement sélectionné.</div>
+      <div class="tool-hint">Sélectionnez un bloc existant pour modifier son style en direct, ou créez-en un nouveau. Le petit carré rouge signale un débordement de texte : cliquez dessus puis sur un autre cadre pour y faire couler la suite (chaînage). Astuce : Ctrl+D duplique le bloc (texte, image, forme…) actuellement sélectionné sur la même page ; Ctrl+C puis Ctrl+V le copie vers n'importe quelle autre page.</div>
 
       <button class="accordion-row" data-accordion="lien" type="button">
         Lien
@@ -3014,7 +3014,39 @@
     if ((e.ctrlKey || e.metaKey) && key === 'z' && !e.shiftKey){ e.preventDefault(); undo(); }
     else if ((e.ctrlKey || e.metaKey) && (key === 'y' || (key === 'z' && e.shiftKey))){ e.preventDefault(); redo(); }
     else if ((e.ctrlKey || e.metaKey) && key === 'd'){ e.preventDefault(); if (typeof duplicateSelectedBlock === 'function') duplicateSelectedBlock(); }
+    else if ((e.ctrlKey || e.metaKey) && key === 'c'){ if (typeof copySelectedBlock === 'function' && selectedBlockId) { e.preventDefault(); copySelectedBlock(); } }
+    else if ((e.ctrlKey || e.metaKey) && key === 'v'){ if (typeof pasteBlockClipboard === 'function' && blockClipboard) { e.preventDefault(); pasteBlockClipboard(); } }
   });
+  // ---- copier/coller un bloc d'une page à l'autre (Ctrl+C / Ctrl+V) ----
+  // Presse-papier interne au carnet (pas le presse-papier système) : simple
+  // variable en mémoire, façon "duplicateSelectedBlock" mais collable sur
+  // n'importe quelle double-page/côté visité ensuite, pas seulement la
+  // même. Perdu à la fermeture de l'onglet — comportement acceptable pour
+  // cet usage ponctuel de copier-coller entre pages.
+  let blockClipboard = null;
+  function copySelectedBlock(){
+    const b = blocksCache.find(x => x.id === selectedBlockId);
+    if (!b) return;
+    blockClipboard = JSON.parse(JSON.stringify(b));
+    delete blockClipboard.linkedTo;
+    delete blockClipboard.linkedFrom;
+    showToast('Bloc copié — Ctrl+V sur une autre page pour le coller.');
+  }
+  async function pasteBlockClipboard(){
+    if (!blockClipboard || !isInterior(spread)) return;
+    const targetSide = currentVisibleSide() || 'left';
+    pushUndo();
+    const clone = JSON.parse(JSON.stringify(blockClipboard));
+    clone.id = genId();
+    clone.spread = spread;
+    clone.side = targetSide;
+    blocksCache.push(clone);
+    await persistBlocks();
+    renderBlocksForSpread();
+    refreshStorageUsage();
+    selectBlock(clone.id);
+    showToast('Bloc collé sur cette page.');
+  }
   document.getElementById('undoBtn').addEventListener('click', undo);
   document.getElementById('redoBtn').addEventListener('click', redo);
 
