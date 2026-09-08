@@ -38,6 +38,7 @@
     --cover:#221f1b;
     --cover-dark:#0f0d0a;
     --card-bg: rgba(255,255,255,.85);
+    --highlight-color: rgba(247,229,139,.55);
     --card-border: rgba(38,35,25,.1);
     --page-radius: 14px;
     --cover-radius: 20px;
@@ -1163,6 +1164,7 @@
     --paper:#3a3a3a; --paper-2:#454545;
     --ink:#f0efe9; --ink-soft:#a9a49b;
     --card-bg: rgba(30,30,30,.88); --card-border: rgba(255,255,255,.14);
+    --highlight-color: rgba(201,173,74,.5);
   }
   #darkModeBtn.active{ background: linear-gradient(155deg, #2f3c50, var(--esprit)); }
 
@@ -1439,7 +1441,7 @@
   .block-text b, .block-text strong{ font-weight:700; }
   .block-text i, .block-text em{ font-style:italic; }
   .block-text mark{
-    background: rgba(247,229,139,.55);
+    background: var(--highlight-color);
     color: inherit;
     border-radius:2px;
     padding:0 1px;
@@ -4813,6 +4815,25 @@
   const resetPublicToolbarPos = makeDraggableDock(document.getElementById('publicToolbar'));
   const resetZoomPanelPos = makeDraggableDock(document.getElementById('zoomFloatPanel'));
 
+  // ---- reclamp au redimensionnement : un panneau/dock glissé près d'un
+  // bord peut se retrouver hors écran si la fenêtre est ensuite réduite (ou
+  // une tablette pivotée). On ne touche qu'aux éléments EFFECTIVEMENT
+  // repositionnés à la main (présence d'un style inline `left`), jamais à
+  // ceux encore à leur position CSS par défaut. ----
+  function reclampFloatingElement(el){
+    if (!el || !el.style.left) return;
+    const rect = el.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const nx = Math.min(Math.max(rect.left, 4), window.innerWidth - rect.width - 4);
+    const ny = Math.min(Math.max(rect.top, 4), window.innerHeight - rect.height - 4);
+    if (Math.abs(nx - rect.left) > 0.5) el.style.left = nx + 'px';
+    if (Math.abs(ny - rect.top) > 0.5) el.style.top = ny + 'px';
+  }
+  const FLOATING_DRAGGABLE_IDS = ['artistPanel', 'blockPanel', 'postitPanel', 'artistDock', 'publicToolbar', 'zoomFloatPanel'];
+  window.addEventListener('resize', debounce(() => {
+    FLOATING_DRAGGABLE_IDS.forEach(id => reclampFloatingElement(document.getElementById(id)));
+  }, 120));
+
   artistDock.querySelectorAll('.dock-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -5221,6 +5242,10 @@
     if (!txt || !txt.contains(sel.anchorNode)) return false;
     try{
       if (cmd === 'highlight'){
+        // execCommand exige une couleur littérale (pas de var() CSS possible
+        // ici) : couleur fixe temporaire pendant la sélection/frappe, qui
+        // s'adapte au mode sombre dès la sortie d'édition — normalizeRichHtml
+        // convertit ce surlignage en <mark>, stylé via CSS (--highlight-color).
         if (!document.execCommand('hiliteColor', false, 'rgba(247,229,139,.55)')){
           document.execCommand('backColor', false, 'rgba(247,229,139,.55)');
         }
@@ -5252,7 +5277,6 @@
     if (txt && sel && sel.anchorNode && txt.contains(sel.anchorNode)) updateFormatButtonsFromSelection();
   });
 
-  const BLOCK_FORMAT_VARS = { bold: 'blockBold', italic: 'blockItalic', underline: 'blockUnderline', highlight: 'blockHighlight' };
   artistPanel.querySelectorAll('.block-format-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.format;
@@ -5377,7 +5401,7 @@
     // surlignage appliqué au bloc entier (comme la couleur/police, jamais
     // au caractère près) : un fond jaune doux façon marqueur, cohérent
     // avec le reste des réglages de bloc, pas une sélection de texte
-    txt.style.backgroundColor = b.highlight ? 'rgba(247,229,139,.55)' : 'transparent';
+    txt.style.backgroundColor = b.highlight ? 'var(--highlight-color)' : 'transparent';
   }
 
   function resolveImageSrc(existingSrc){
