@@ -2185,7 +2185,7 @@
         </button>
       </div>
 
-      <div class="tool-hint">Sélectionnez un bloc existant pour modifier son style en direct, ou créez-en un nouveau. Le petit carré rouge signale un débordement de texte : cliquez dessus puis sur un autre cadre pour y faire couler la suite (chaînage). Astuce : Ctrl+D duplique le bloc (texte, image, forme…) actuellement sélectionné sur la même page ; Ctrl+C puis Ctrl+V le copie vers n'importe quelle autre page.</div>
+      <div class="tool-hint">Sélectionnez un bloc existant pour modifier son style en direct, ou créez-en un nouveau. Le petit carré rouge signale un débordement de texte : cliquez dessus, tournez la page si besoin, puis cliquez sur un autre cadre — même sur une autre double-page — pour y faire couler la suite (chaînage). Astuce : Ctrl+D duplique le bloc (texte, image, forme…) actuellement sélectionné sur la même page ; Ctrl+C puis Ctrl+V le copie vers n'importe quelle autre page.</div>
 
       <button class="accordion-row" data-accordion="lien" type="button">
         Lien
@@ -3226,17 +3226,17 @@
   }
 
   function applyResponsiveTextScale(){
+    const heads = new Set();
     document.querySelectorAll('.content-block').forEach(el => {
       const b = blocksCache.find(x => x.id === el.id);
       if (b && b.type === 'text'){
         const txt = el.querySelector('.block-text');
         if (txt) styleTextEl(txt, b);
+        heads.add(chainHead(b.id)); // vraie tête de chaîne, même hors de cette page
       }
     });
     // la taille de police a changé : la place disponible dans chaque cadre
     // aussi, donc le débordement/chaînage doit être recalculé.
-    const heads = new Set();
-    blocksCache.forEach(b => { if (b.type === 'text' && !b.linkedFrom && b.spread === spread) heads.add(b.id); });
     heads.forEach(id => redistributeChain(id));
   }
   function fitBookToViewport(){
@@ -3635,7 +3635,10 @@
     let startX = 0, startY = 0, startT = 0, tracking = false;
 
     function toolArmed(){
-      return !!(artistMode && (drawTool || placingBlockType || placingShapeType || placingLink || linkingFromId));
+      // linkingFromId n'empêche plus le swipe : le chaînage peut désormais
+      // viser un cadre situé sur une autre double-page, donc tourner la
+      // page pendant qu'un chaînage est en attente doit rester possible.
+      return !!(artistMode && (drawTool || placingBlockType || placingShapeType || placingLink));
     }
 
     target.addEventListener('touchstart', (e) => {
@@ -5512,10 +5515,14 @@
     const side = isInterior(spread) ? currentVisibleSide() : null; // les couvertures n'ont qu'un seul côté, jamais de filtre gauche/droite
     const spreadBlocks = blocksCache.filter(b => b.spread === spread && (!side || b.side === side));
     spreadBlocks.forEach(buildBlockElement);
-    // recalcule le débordement / chaînage de chaque chaîne de cadres de la page affichée
-    spreadBlocks
-      .filter(b => b.type === 'text' && !b.linkedFrom)
-      .forEach(b => redistributeChain(b.id));
+    // recalcule chaque chaîne de cadres touchant cette double-page — y compris
+    // quand la tête de chaîne (premier cadre) se trouve sur une AUTRE page :
+    // le chaînage peut désormais traverser plusieurs doubles-pages, on
+    // retrouve donc la vraie tête via chainHead() plutôt que de se limiter
+    // aux cadres de tête physiquement présents ici.
+    const chainHeadsHere = new Set();
+    spreadBlocks.forEach(b => { if (b.type === 'text') chainHeadsHere.add(chainHead(b.id)); });
+    chainHeadsHere.forEach(id => redistributeChain(id));
     if (typeof updateBlankHints === 'function') updateBlankHints();
   }
 
@@ -5990,6 +5997,7 @@
     el.classList.toggle('chained', isChained);
     el.classList.toggle('locked', !!b.locked);
     el.classList.toggle('downstream', !!b.linkedFrom);
+    if (linkingFromId === b.id) el.classList.add('linking-source');
 
     let textEl = null, wrapEl = null, overflowEl = null, unlinkBtn = null;
     if (b.type === 'text'){
@@ -6612,7 +6620,7 @@
   }
   document.addEventListener('click', (e) => {
     if (editingTextBlockId && !e.target.closest('#' + editingTextBlockId)) exitTextEditMode();
-    if (linkingFromId && !e.target.closest('.content-block')) cancelLinking();
+    if (linkingFromId && !e.target.closest('.content-block') && !e.target.closest('.page-nav')) cancelLinking();
     if (croppingBlockId && !e.target.closest('#' + croppingBlockId) && !e.target.closest('.crop-toolbar')) closeCropMode();
     if (!e.target.closest('.content-block') && !e.target.closest('.artist-dock') && !e.target.closest('.artist-panel') && !e.target.closest('.postit-panel') && !e.target.closest('.crop-toolbar')) deselectBlock();
   });
@@ -6708,19 +6716,32 @@
     scheduleRedistribute(chainHead(b.id));
     persistBlocks();
   }
-  function measureFit(refTxtEl, fullHtml, limitHeight){
+  // Dimensions de référence d'UNE page (gauche ou droite) — physiquement
+  // identiques quelle que soit la double-page affichée, y compris en mode
+  // mobile fluide (var(--page-vw)) : sert à mesurer/positionner un cadre de
+  // texte "virtuellement", même s'il appartient à une double-page qui n'est
+  // pas celle actuellement rendue (chaînage inter-pages).
+  function pageRefDims(){
+    const r = pageLeft.getBoundingClientRect();
+    return { w: r.width || 420, h: r.height || 595 };
+  }
+
+  function measureFit(b, fullHtml, limitHeightPx, widthPx){
     if (!fullHtml) return { shown: '', remainder: '' };
-    const cs = getComputedStyle(refTxtEl);
-    textMeasurer.style.width = refTxtEl.clientWidth + 'px';
-    textMeasurer.style.fontFamily = cs.fontFamily;
-    textMeasurer.style.fontSize = cs.fontSize;
-    textMeasurer.style.lineHeight = cs.lineHeight;
-    textMeasurer.style.letterSpacing = cs.letterSpacing;
-    textMeasurer.style.textAlign = cs.textAlign;
-    textMeasurer.style.padding = cs.padding;
-    textMeasurer.style.boxSizing = cs.boxSizing;
-    textMeasurer.style.fontWeight = cs.fontWeight;
-    textMeasurer.style.fontStyle = cs.fontStyle;
+    // Style déduit directement des propriétés du bloc (b), jamais d'un
+    // élément DOM live via getComputedStyle : ce cadre peut appartenir à
+    // une double-page différente de celle actuellement affichée (chaînage
+    // inter-pages), donc sans layout disponible pour lui à cet instant.
+    textMeasurer.style.width = widthPx + 'px';
+    textMeasurer.style.fontFamily = b.fontFamily;
+    textMeasurer.style.fontSize = (b.fontSize * getTextScaleFactor()) + 'pt';
+    textMeasurer.style.lineHeight = b.lineHeight;
+    textMeasurer.style.letterSpacing = b.letterSpacing + 'px';
+    textMeasurer.style.textAlign = b.align;
+    textMeasurer.style.padding = (b.padding != null ? b.padding : 8) + 'px';
+    textMeasurer.style.boxSizing = 'border-box';
+    textMeasurer.style.fontWeight = b.bold ? '700' : '400';
+    textMeasurer.style.fontStyle = b.italic ? 'italic' : 'normal';
     // Le mesureur reste volontairement en 1 seule colonne (jamais
     // cs.columnCount) : reproduire une vraie mise en page à N colonnes
     // hors-écran, à hauteur libre, ne "casse" pas de façon fiable d'une
@@ -6732,8 +6753,8 @@
     // seule — approximation simple, mais bien plus fidèle que d'ignorer le
     // nombre de colonnes (qui tronquait le texte comme s'il n'y en avait
     // qu'une, laissant la 2e colonne quasiment vide).
-    const colCount = Math.max(1, parseInt(cs.columnCount, 10) || 1);
-    const effectiveLimit = limitHeight * colCount;
+    const colCount = Math.max(1, b.columns || 1);
+    const effectiveLimit = limitHeightPx * colCount;
 
     const sourceRoot = document.createElement('div');
     sourceRoot.innerHTML = fullHtml;
@@ -6796,29 +6817,39 @@
       chain.push(next.id);
       cur = next;
     }
+    const pageDims = pageRefDims();
     let remaining = head.text || '';
     chain.forEach((id, idx) => {
       const b = blocksCache.find(x => x.id === id);
+      if (!b) return;
+      // le cadre peut appartenir à une AUTRE double-page que celle
+      // actuellement affichée (chaînage inter-pages) : el est alors null,
+      // mais on poursuit quand même le calcul pour que le cache (b.text)
+      // reste juste, prêt à s'afficher correctement dès qu'on y navigue.
       const el = document.getElementById(id);
-      if (!b || !el) return;
-      const wrap = el.querySelector('.block-text-wrap');
-      const txt = el.querySelector('.block-text');
-      if (!wrap || !txt) return;
-      // pendant que ce cadre précis est en cours de frappe, on ne réécrit pas
-      // son propre contenu affiché (pour ne pas perdre le curseur) — seul le
-      // calcul du reliquat transmis au maillon suivant continue de tourner
       const isBeingEdited = editingTextBlockId === id;
-      if (isBeingEdited){
-        remaining = txt.innerHTML;
+      if (isBeingEdited && el){
+        // pendant que ce cadre précis est en cours de frappe, on ne réécrit
+        // pas son propre contenu affiché (pour ne pas perdre le curseur) —
+        // seul le calcul du reliquat transmis au maillon suivant continue
+        const txt = el.querySelector('.block-text');
+        remaining = txt ? txt.innerHTML : remaining;
       } else {
-        const { shown, remainder } = measureFit(txt, remaining, wrap.clientHeight);
-        txt.innerHTML = shown;
+        const widthPx = b.relW * pageDims.w;
+        const heightPx = b.relH * pageDims.h;
+        const { shown, remainder } = measureFit(b, remaining, heightPx, widthPx);
         if (idx > 0) b.text = shown;
+        if (el){
+          const txt = el.querySelector('.block-text');
+          if (txt) txt.innerHTML = shown;
+        }
         remaining = remainder;
       }
       const isLast = idx === chain.length - 1;
-      const ind = el.querySelector('.block-overflow');
-      if (ind) ind.style.display = (isLast && remaining !== '') ? 'flex' : 'none';
+      if (el){
+        const ind = el.querySelector('.block-overflow');
+        if (ind) ind.style.display = (isLast && remaining !== '') ? 'flex' : 'none';
+      }
     });
     persistBlocks();
   }
@@ -6842,7 +6873,6 @@
     const source = blocksCache.find(x => x.id === sourceId);
     const target = blocksCache.find(x => x.id === targetId);
     if (!source || !target || target.type !== 'text' || source.type !== 'text') return;
-    if (target.spread !== source.spread) return; // le chaînage se fait au sein d'une même double-page
     // évite les boucles : le futur cadre cible ne doit pas déjà remonter jusqu'à la source
     let probe = source, guard = 0, cycle = false;
     while (probe && probe.linkedFrom && guard++ < 200){
