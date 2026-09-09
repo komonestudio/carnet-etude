@@ -3277,6 +3277,7 @@
       marginLeft.classList.add('mz-collapsed');
       marginRight.classList.add('mz-collapsed');
       indicator.textContent = spread <= 0 ? 'Couverture' : 'Dos de couverture';
+      if (typeof applyBackground === 'function') applyBackground();
       return;
     }
     const nums = pageNumbers(spread);
@@ -3285,6 +3286,7 @@
       marginLeft.classList.remove('mz-collapsed');
       marginRight.classList.remove('mz-collapsed');
       indicator.textContent = nums.indicator;
+      if (typeof applyBackground === 'function') applyBackground();
       return;
     }
     const showLeft = singlePageSide === 'left';
@@ -3293,6 +3295,7 @@
     marginLeft.classList.toggle('mz-collapsed', !showLeft);
     marginRight.classList.toggle('mz-collapsed', showLeft);
     indicator.textContent = showLeft ? nums.leftLabel : nums.rightLabel;
+    if (typeof applyBackground === 'function') applyBackground();
   }
 
   function currentVisibleSide(){
@@ -7554,10 +7557,17 @@
     const bg = backgroundsCache || {};
     if (bg.image){
       document.body.style.backgroundImage = `url("${bg.image}")`;
-      document.body.style.backgroundSize = 'cover';
-      document.body.style.backgroundPosition = 'center';
       document.body.style.backgroundAttachment = 'fixed';
       document.body.style.backgroundColor = '';
+      if (document.body.classList.contains('single-page-mode')){
+        // image coupée en deux en son milieu : moitié gauche visible côté
+        // page gauche, moitié droite visible côté page droite
+        document.body.style.backgroundSize = '200% 100%';
+        document.body.style.backgroundPosition = document.body.classList.contains('side-right') ? '100% center' : '0% center';
+      } else {
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+      }
     } else if (bg.color){
       // 'none' (et non '') est indispensable : sinon le dégradé du CSS de base
       // (propriété raccourcie « background ») reste visible et masque la couleur.
