@@ -1394,14 +1394,14 @@
   .content-block.selected{ outline:1.5px dashed rgba(65,82,107,.55); outline-offset:4px; }
   .content-block.editing{ outline:2px solid var(--esprit); outline-offset:3px; touch-action:auto; }
   /* cadre de texte chaîné EN AVAL (reçoit le débordement d'un autre cadre) :
-     son contenu suit automatiquement celui du cadre de tête, il ne s'édite
-     donc pas directement au double-clic — un mini-repère visuel (coin
-     rayé) et un curseur "non permis" évitent la confusion « pourquoi je ne
-     peux pas taper dedans ». */
+     éditable directement comme n'importe quel cadre de texte — une
+     modification ici reconstruit le texte complet de la chaîne et
+     recalcule le débordement (voir exitTextEditMode). Le motif rayé reste
+     un simple repère visuel indiquant que ce cadre fait partie d'une
+     chaîne, pas une interdiction d'édition. */
   body.artist-mode .content-block.downstream{
     background-image: repeating-linear-gradient(135deg, rgba(65,82,107,.05) 0 6px, transparent 6px 12px);
   }
-  body.artist-mode .content-block.downstream:hover{ cursor: not-allowed; }
   .content-block.editing .block-resize,
   .content-block.editing .block-delete{ display:none; }
   .content-block .block-resize{
@@ -5083,6 +5083,18 @@
   // ---- Outil Texte : création par glisser-déposer (drag-to-create), façon InDesign ----
   let textDragState = null; // { pageEl, side, startX, startY, ghost }
   const MIN_TEXT_DRAG = 18; // en dessous de ce seuil (px), on considère un simple clic
+  // ---- Dimensions par défaut des blocs, en PIXELS FIXES ----
+  // Un bloc (texte, image, forme, lien), une fois créé/dimensionné, garde
+  // désormais sa taille et sa position en pixels absolus, quel que soit le
+  // format d'écran ensuite (mobile, tablette, redimensionnement de fenêtre) —
+  // il ne suit plus un pourcentage de la page. Ces constantes ne servent
+  // qu'à choisir une taille de départ cohérente, calquée sur les anciennes
+  // proportions (référence historique : page desktop de 420×595px).
+  const DEFAULT_TEXT_W = 176, DEFAULT_TEXT_H = 119;   // ex 42% × 20%
+  const DEFAULT_IMAGE_W = 134, DEFAULT_IMAGE_H = 155; // ex 32% × 26%
+  const DEFAULT_SHAPE_SIZE = 60;                       // ex 14% × 14%
+  const DEFAULT_LINK_W = 126, DEFAULT_LINK_H = 42;     // ex 30% × 7%
+  const BLOCK_MIN_W = 30, BLOCK_MIN_H = 24;            // taille minimale au redimensionnement
 
   function updateTextGhost(curX, curY){
     if (!textDragState) return;
@@ -5121,18 +5133,21 @@
 
     const rect = pageEl.getBoundingClientRect();
     const w = Math.abs(e.clientX - startX), h = Math.abs(e.clientY - startY);
-    let relX, relY, relW, relH;
+    let relX, relY, relW, relH; // en PIXELS FIXES (référence 420×595), plus jamais recalculés selon l'écran
     if (w < MIN_TEXT_DRAG || h < MIN_TEXT_DRAG){
-      // simple clic sans glisser : cadre de taille par défaut ancré au point cliqué
-      relX = Math.min(Math.max((startX - rect.left) / rect.width, 0), 0.85);
-      relY = Math.min(Math.max((startY - rect.top) / rect.height, 0), 0.85);
-      relW = 0.42; relH = 0.2;
+      // simple clic sans glisser : cadre de taille par défaut (px fixes,
+      // référence 420×595) ancré au point cliqué — voir DEFAULT_TEXT_W/H
+      relX = Math.min(Math.max(startX - rect.left, 0), Math.max(0, rect.width - 20));
+      relY = Math.min(Math.max(startY - rect.top, 0), Math.max(0, rect.height - 20));
+      relW = DEFAULT_TEXT_W; relH = DEFAULT_TEXT_H;
     } else {
+      // glisser pour tracer : la taille du cadre en pixels est celle
+      // effectivement tracée à l'écran, gelée définitivement ensuite —
+      // elle ne recalculera plus jamais en fonction du format de l'écran
       const left = Math.min(startX, e.clientX), top = Math.min(startY, e.clientY);
-      relX = Math.min(Math.max((left - rect.left) / rect.width, 0), 0.97);
-      relY = Math.min(Math.max((top - rect.top) / rect.height, 0), 0.97);
-      relW = Math.min(w / rect.width, 1 - relX);
-      relH = Math.min(h / rect.height, 1 - relY);
+      relX = Math.max(left - rect.left, 0);
+      relY = Math.max(top - rect.top, 0);
+      relW = w; relH = h;
     }
 
     const block = {
@@ -5160,8 +5175,8 @@
       if (e.target.closest('.content-block') || e.target.closest('.postit')) return;
       const side = sideForPageEl(pageEl);
       const rect = pageEl.getBoundingClientRect();
-      const relX = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 0.85);
-      const relY = Math.min(Math.max((e.clientY - rect.top) / rect.height, 0), 0.85);
+      const relX = Math.min(Math.max(e.clientX - rect.left, 0), Math.max(0, rect.width - 20));
+      const relY = Math.min(Math.max(e.clientY - rect.top, 0), Math.max(0, rect.height - 20));
 
       if (placingBlockType === 'image'){
         pendingBlockSpot = { side, spread, relX, relY, type: 'image' };
@@ -5173,7 +5188,7 @@
       if (placingShapeType){
         const block = {
           id: genId(), spread, side, type: 'shape', shapeType: placingShapeType,
-          relX, relY, relW: 0.14, relH: 0.14, rotation: 0, color: shapeColorInput.value,
+          relX, relY, relW: DEFAULT_SHAPE_SIZE, relH: DEFAULT_SHAPE_SIZE, rotation: 0, color: shapeColorInput.value,
           borderColor: '#000000', borderWidth: 0, borderStyle: 'solid', radius: 0
         };
         pushUndo();
@@ -5190,7 +5205,7 @@
         if (!url) { placingLink = false; return; }
         const block = {
           id: genId(), spread, side, type: 'link',
-          relX, relY, relW: 0.3, relH: 0.07, rotation: 0,
+          relX, relY, relW: DEFAULT_LINK_W, relH: DEFAULT_LINK_H, rotation: 0,
           label: document.getElementById('linkLabelInput').value.trim() || url,
           href: normalizeUrl(url)
         };
@@ -5420,18 +5435,14 @@
     // la mise en forme change la place disponible : on recalcule le débordement / chaînage
     if (el) scheduleRedistribute(chainHead(b.id));
   }
-  // Facteur d'échelle du texte en mode mobile/tablette : les blocs gardent
-  // la même taille EN % de la page (b.relW/relH), mais une page plus
-  // étroite (--page-vw) force plus de retours à la ligne à taille de police
-  // fixe (pt), donc plus de hauteur nécessaire — d'où un débordement qui
-  // n'existait pas au moment de la création sur desktop. On réduit donc la
-  // taille affichée proportionnellement à la largeur réelle de la page,
-  // exactement comme pour l'enveloppe (voir updateEnvelopeScale) : jamais
-  // de recalcul de formule dupliqué, on lit la largeur réelle du DOM.
+  // Les blocs (position ET taille) sont désormais en pixels fixes, gelés
+  // dès leur création/dimensionnement, et ne suivent plus la largeur de
+  // page (--page-vw en mobile). Il n'y a donc plus de raison de réduire la
+  // taille de police selon le format : elle reste, elle aussi, fixe. Cette
+  // fonction est conservée (au lieu d'être retirée) pour ne pas toucher à
+  // tous ses points d'appel, mais renvoie toujours 1.
   function getTextScaleFactor(){
-    if (!document.body.classList.contains('single-page-mode')) return 1;
-    const pageWidthPx = pageLeft.getBoundingClientRect().width || 420;
-    return pageWidthPx / 420; // 420 = largeur de référence desktop (moitié de .book, 840/2)
+    return 1;
   }
   function styleTextEl(txt, b){
     txt.style.fontSize = (b.fontSize * getTextScaleFactor()) + 'pt';
@@ -5492,8 +5503,8 @@
       id: genId(), spread: pendingBlockSpot.spread, side: pendingBlockSpot.side,
       type,
       relX: pendingBlockSpot.relX, relY: pendingBlockSpot.relY,
-      relW: type === 'text' ? 0.42 : 0.32,
-      relH: type === 'text' ? 0.2 : 0.26,
+      relW: type === 'text' ? DEFAULT_TEXT_W : DEFAULT_IMAGE_W,
+      relH: type === 'text' ? DEFAULT_TEXT_H : DEFAULT_IMAGE_H,
       rotation: 0,
       text: type === 'text' ? blockTextArea.value.trim() : '',
       src: imageSrc,
@@ -5989,10 +6000,10 @@
     const el = document.createElement('div');
     el.className = 'content-block';
     el.id = b.id;
-    el.style.left = (b.relX * 100) + '%';
-    el.style.top = (b.relY * 100) + '%';
-    el.style.width = (b.relW * 100) + '%';
-    el.style.height = (b.relH * 100) + '%';
+    el.style.left = b.relX + 'px';
+    el.style.top = b.relY + 'px';
+    el.style.width = b.relW + 'px';
+    el.style.height = b.relH + 'px';
     // rotation libre : appliquée sur le bloc entier, tout son contenu
     // (texte, image, forme…) tourne avec lui puisqu'il en hérite en CSS
     el.style.transform = `rotate(${b.rotation || 0}deg)`;
@@ -6153,7 +6164,7 @@
     el.setAttribute('aria-label',
       b.type === 'text' ? 'Bloc de texte' : b.type === 'image' ? 'Image' : b.type === 'shape' ? 'Forme' : 'Lien');
     if (b.type === 'text' && b.linkedFrom){
-      el.title = 'Cadre chaîné : ce texte suit le débordement du cadre précédent — éditez ce dernier pour le modifier.';
+      el.title = 'Cadre chaîné : fait partie d\'une chaîne de débordement — éditable directement, la chaîne entière se réajuste à la sortie.';
     }
     el.addEventListener('keydown', (e) => {
       if (!artistMode || e.target !== el) return;
@@ -6169,16 +6180,17 @@
         return;
       }
       if (selectedBlockId !== b.id || b.locked) return;
-      const step = e.shiftKey ? 0.02 : 0.005;
+      const step = e.shiftKey ? 8 : 2;
       let moved = false;
+      const pRect = pageEl.getBoundingClientRect();
       if (e.key === 'ArrowLeft'){ b.relX = Math.max(0, b.relX - step); moved = true; }
-      else if (e.key === 'ArrowRight'){ b.relX = Math.min(1 - b.relW, b.relX + step); moved = true; }
+      else if (e.key === 'ArrowRight'){ b.relX = Math.min(pRect.width - b.relW, b.relX + step); moved = true; }
       else if (e.key === 'ArrowUp'){ b.relY = Math.max(0, b.relY - step); moved = true; }
-      else if (e.key === 'ArrowDown'){ b.relY = Math.min(1 - b.relH, b.relY + step); moved = true; }
+      else if (e.key === 'ArrowDown'){ b.relY = Math.min(pRect.height - b.relH, b.relY + step); moved = true; }
       if (moved){
         e.preventDefault();
-        el.style.left = (b.relX * 100) + '%';
-        el.style.top = (b.relY * 100) + '%';
+        el.style.left = b.relX + 'px';
+        el.style.top = b.relY + 'px';
         persistBlocks();
       }
     });
@@ -6210,7 +6222,7 @@
       // façon fiable pour revenir en édition — on retombe donc sur deux
       // taps simples successifs : le premier sélectionne, le second (sur un
       // bloc de texte déjà sélectionné) rentre directement en édition.
-      if (b.type === 'text' && !b.linkedFrom && !b.locked && selectedBlockId === b.id){
+      if (b.type === 'text' && !b.locked && selectedBlockId === b.id){
         enterTextEditMode(b.id);
         return;
       }
@@ -6221,7 +6233,6 @@
       if (b.locked) return;
       e.stopPropagation();
       if (b.type === 'text'){
-        if (b.linkedFrom) return; // seul le cadre de tête de chaîne s'édite directement
         enterTextEditMode(b.id);
         return;
       }
@@ -6304,12 +6315,12 @@
         }
       }
       const pageRect = dragPageEl.getBoundingClientRect();
-      let nx = (e.clientX - offX - pageRect.left) / pageRect.width;
-      let ny = (e.clientY - offY - pageRect.top) / pageRect.height;
-      nx = Math.min(Math.max(nx, 0), 1 - b.relW);
-      ny = Math.min(Math.max(ny, 0), 1 - b.relH);
-      el.style.left = (nx * 100) + '%';
-      el.style.top = (ny * 100) + '%';
+      let nx = e.clientX - offX - pageRect.left;
+      let ny = e.clientY - offY - pageRect.top;
+      nx = Math.min(Math.max(nx, 0), Math.max(0, pageRect.width - b.relW));
+      ny = Math.min(Math.max(ny, 0), Math.max(0, pageRect.height - b.relH));
+      el.style.left = nx + 'px';
+      el.style.top = ny + 'px';
       b.relX = nx; b.relY = ny;
     });
     el.addEventListener('pointerup', async (e) => {
@@ -6324,9 +6335,10 @@
     });
 
     // redimensionnement — logique commune aux 4 coins : le coin OPPOSÉ à
-    // celui qu'on tire sert d'ancre fixe ; relX/relY/relW/relH se déduisent
-    // simplement de la position de l'ancre et de celle du pointeur.
-    const MIN_W = 0.08, MIN_H = 0.06;
+    // celui qu'on tire sert d'ancre fixe ; relX/relY/relW/relH (désormais
+    // des pixels fixes, pas des fractions de page) se déduisent simplement
+    // de la position de l'ancre et de celle du pointeur.
+    const MIN_W = BLOCK_MIN_W, MIN_H = BLOCK_MIN_H;
     Object.entries(resizeHandles).forEach(([corner, handle]) => {
       let resizing = false, anchorX = 0, anchorY = 0;
       handle.addEventListener('pointerdown', (e) => {
@@ -6342,8 +6354,8 @@
       handle.addEventListener('pointermove', (e) => {
         if (!resizing) return;
         const pageRect = pageEl.getBoundingClientRect();
-        let px = Math.min(Math.max((e.clientX - pageRect.left) / pageRect.width, 0), 1);
-        let py = Math.min(Math.max((e.clientY - pageRect.top) / pageRect.height, 0), 1);
+        let px = Math.min(Math.max(e.clientX - pageRect.left, 0), pageRect.width);
+        let py = Math.min(Math.max(e.clientY - pageRect.top, 0), pageRect.height);
         // impose une taille minimale en limitant la distance à l'ancre,
         // dans la bonne direction selon de quel côté on tire
         if (Math.abs(px - anchorX) < MIN_W) px = anchorX + MIN_W * (px < anchorX ? -1 : 1);
@@ -6352,10 +6364,10 @@
         b.relW = Math.abs(px - anchorX);
         b.relY = Math.min(py, anchorY);
         b.relH = Math.abs(py - anchorY);
-        el.style.left = (b.relX * 100) + '%';
-        el.style.top = (b.relY * 100) + '%';
-        el.style.width = (b.relW * 100) + '%';
-        el.style.height = (b.relH * 100) + '%';
+        el.style.left = b.relX + 'px';
+        el.style.top = b.relY + 'px';
+        el.style.width = b.relW + 'px';
+        el.style.height = b.relH + 'px';
         if (b.type === 'text') scheduleRedistribute(chainHead(b.id));
         // redimensionner le cadre recadre l'image (façon masque InDesign) sans
         // jamais la déformer : layoutImageInFrame recalcule juste l'échelle
@@ -6437,7 +6449,6 @@
     if (editingTextBlockId && editingTextBlockId !== id) exitTextEditMode();
     const b = blocksCache.find(x => x.id === id);
     if (!b || b.type !== 'text') return;
-    if (b.linkedFrom) return; // seul le cadre de tête de chaîne s'édite directement
     const el = document.getElementById(id);
     if (!el) return;
     const txt = el.querySelector('.block-text');
@@ -6537,7 +6548,17 @@
     editingTextBlockId = null;
     // sortie d'édition : on recalcule proprement le débordement / chaînage
     // (coupé sur un mot entier, jamais en cours de frappe pour ne pas gêner)
-    if (b) redistributeChain(chainHead(id));
+    if (b){
+      const headId = chainHead(id);
+      if (headId !== id){
+        // le fragment édité n'est pas la tête de chaîne : le texte de tête
+        // (qui pilote toute la redistribution) doit d'abord être reconstruit
+        // à partir des fragments actuels de chaque maillon, édité inclus
+        const head = blocksCache.find(x => x.id === headId);
+        if (head) head.text = fullChainText(headId);
+      }
+      redistributeChain(headId);
+    }
     // repasse en mode sélection (cadre + poignées de redimensionnement)
     if (el && b) selectBlock(id);
   }
@@ -6552,8 +6573,9 @@
     pushUndo();
     const clone = JSON.parse(JSON.stringify(b));
     clone.id = genId();
-    clone.relX = Math.min(1 - clone.relW, clone.relX + 0.02);
-    clone.relY = Math.min(1 - clone.relH, clone.relY + 0.02);
+    const pRect = pageElForSide(clone.side).getBoundingClientRect();
+    clone.relX = Math.min(Math.max(0, pRect.width - clone.relW), clone.relX + 10);
+    clone.relY = Math.min(Math.max(0, pRect.height - clone.relH), clone.relY + 10);
     delete clone.linkedTo;
     delete clone.linkedFrom;
     blocksCache.push(clone);
@@ -6744,8 +6766,8 @@
     textMeasurer.innerHTML = b.text || '';
     const pageRect = pageElForSide(b.side).getBoundingClientRect();
     const neededHeightPx = textMeasurer.scrollHeight;
-    b.relH = Math.min(1 - b.relY, Math.max(0.06, neededHeightPx / pageRect.height));
-    el.style.height = (b.relH * 100) + '%';
+    b.relH = Math.min(Math.max(0, pageRect.height - b.relY), Math.max(BLOCK_MIN_H, neededHeightPx));
+    el.style.height = b.relH + 'px';
     scheduleRedistribute(chainHead(b.id));
     persistBlocks();
   }
@@ -6829,6 +6851,26 @@
     return b ? b.id : id;
   }
 
+  // Reconstruit le texte complet d'une chaîne de cadres liés en concaténant
+  // le .text de chaque maillon, du cadre de tête jusqu'au dernier — utilisé
+  // quand l'édition a eu lieu sur un cadre EN AVAL (pas la tête) : chaque
+  // b.text représente le fragment affiché de ce cadre au moment de la
+  // dernière répartition, donc leur mise bout à bout redonne le texte
+  // intégral, prêt à être redistribué à nouveau (voir exitTextEditMode).
+  function fullChainText(headId){
+    const head = blocksCache.find(x => x.id === headId);
+    if (!head) return '';
+    let text = head.text || '';
+    let cur = head, guard = 0;
+    while (cur.linkedTo && guard++ < 200){
+      const next = blocksCache.find(x => x.id === cur.linkedTo);
+      if (!next) break;
+      text += (next.text || '');
+      cur = next;
+    }
+    return text;
+  }
+
   let redistributeTimer = null;
   function scheduleRedistribute(headId){
     clearTimeout(redistributeTimer);
@@ -6850,7 +6892,6 @@
       chain.push(next.id);
       cur = next;
     }
-    const pageDims = pageRefDims();
     let remaining = head.text || '';
     chain.forEach((id, idx) => {
       const b = blocksCache.find(x => x.id === id);
@@ -6868,8 +6909,8 @@
         const txt = el.querySelector('.block-text');
         remaining = txt ? txt.innerHTML : remaining;
       } else {
-        const widthPx = b.relW * pageDims.w;
-        const heightPx = b.relH * pageDims.h;
+        const widthPx = b.relW;
+        const heightPx = b.relH;
         const { shown, remainder } = measureFit(b, remaining, heightPx, widthPx);
         if (idx > 0) b.text = shown;
         if (el){
