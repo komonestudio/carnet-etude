@@ -1057,37 +1057,6 @@
 
   /* ============ MODE ARTISTE ============ */
 
-  /* Le bouton public/artiste n'est utile qu'à un seul usage réel (l'accès
-     réservé de l'artiste) : le masquer aux visiteurs réduit la surface
-     d'exposition (moins de clics curieux déclenchant le verrou anti-
-     bruteforce) et allège l'interface publique. L'accès reste possible via
-     le lien secret (#artist=...) ou un appareil déjà mémorisé — voir
-     tryAutoUnlockArtist(). Reste visible en mode artiste ET sur tout
-     appareil déjà reconnu (classe posée par tryAutoUnlockArtist, dès qu'un
-     token valide existe) — sinon, passer en aperçu public depuis le mode
-     artiste ferait disparaître le bouton, sans façon d'y revenir autrement
-     qu'en retapant le lien secret depuis zéro. */
-  body:not(.artist-mode):not(.artist-device-recognized) .mode-switch{ display:none !important; }
-  .mode-switch{
-    position:fixed; top:26px; right:30px; z-index:56;
-    display:flex; align-items:center; gap:8px;
-    font-family:'Inter', sans-serif; font-size:11.5px; font-weight:600; color: var(--ink-soft);
-    background: rgba(255,255,255,.55);
-    border:1px solid rgba(38,35,25,.12);
-    backdrop-filter: blur(10px);
-    padding:7px 12px 7px 14px; border-radius:999px;
-  }
-  .mode-switch button{
-    width:34px; height:19px; border-radius:999px; border:none; cursor:pointer;
-    background: rgba(38,35,25,.2); position:relative; transition: background .2s ease;
-  }
-  .mode-switch button::after{
-    content:""; position:absolute; top:2px; left:2px; width:15px; height:15px; border-radius:50%;
-    background:#fff; transition: transform .2s ease; box-shadow: 0 1px 2px rgba(0,0,0,.3);
-  }
-  .mode-switch button.on{ background: var(--esprit); }
-  .mode-switch button.on::after{ transform: translateX(15px); }
-
   body.artist-mode .writing-indicator{ display:none !important; }
   /* ---- mode aperçu (artiste) : masque tout le chrome d'édition pour
      visualiser le carnet exactement comme un visiteur, sans quitter la
@@ -1128,7 +1097,6 @@
      conçu à l'origine pour un fond clair (background blanc translucide,
      bordure sombre) — en mode sombre on inverse ce couple pour rester
      lisible, sans toucher aux nombreux sélecteurs individuels un par un. */
-  body.dark-mode .mode-switch,
   body.dark-mode .page-nav__arrow,
   body.dark-mode .visitor-counter,
   body.dark-mode .writing-indicator,
@@ -1553,10 +1521,6 @@
     font-family:'Inter', sans-serif; font-size:11.5px; font-weight:600; color: var(--corps);
     margin:-6px 0 12px;
   }
-  .security-status{
-    font-family:'Newsreader', serif; font-style:italic; font-size:11px;
-    color: var(--ink-soft); margin-bottom:8px;
-  }
 
   .sr-only{
     position:absolute; width:1px; height:1px; padding:0; margin:-1px;
@@ -1576,14 +1540,6 @@
   .carnet-toast.visible{ opacity:1; transform: translateX(-50%) translateY(0); }
   .carnet-toast.error{ background: var(--corps); }
 
-  .dock-btn{ position:relative; }
-  .dock-badge{
-    position:absolute; top:-3px; right:-3px; z-index:2;
-    min-width:16px; height:16px; padding:0 4px; border-radius:999px;
-    background: var(--corps); color:#fff; font-size:9.5px; font-weight:700;
-    display:none; align-items:center; justify-content:center;
-    border:2px solid #1b1916;
-  }
   .accordion-action.danger{ color: var(--corps); border-color: rgba(179,80,46,.35); }
 
   .auth-remember{
@@ -1607,13 +1563,6 @@
     font-family:'Inter', sans-serif; font-size:10.5px; color: var(--ink-soft); margin-top:6px;
   }
 
-  /* ---- badge de compte (modération) ---- */
-  .mod-badge{
-    display:inline-flex; align-items:center; justify-content:center;
-    min-width:16px; height:16px; padding:0 4px; border-radius:999px;
-    background: var(--corps); color:#fff; font-size:10px; font-weight:700;
-    vertical-align:middle; margin-left:4px;
-  }
   .mini-toggle{
     width:34px; height:19px; border-radius:999px; border:none; cursor:pointer;
     background: rgba(38,35,25,.2); position:relative; transition: background .2s ease; flex-shrink:0;
@@ -1624,23 +1573,6 @@
   }
   .mini-toggle.on{ background: var(--esprit); }
   .mini-toggle.on::after{ transform: translateX(15px); }
-
-  .mod-queue-item{
-    border-top:1px solid rgba(38,35,25,.08); padding:9px 2px; font-family:'Inter', sans-serif;
-  }
-  .mod-queue-item:first-child{ border-top:none; }
-  .mod-queue-text{
-    font-family:'Newsreader', serif; font-size:12px; color: var(--ink);
-    line-height:1.4; max-height:54px; overflow:hidden;
-  }
-  .mod-queue-meta{ font-size:10.5px; color: var(--ink-soft); margin-top:4px; }
-  .mod-queue-actions{ display:flex; gap:6px; margin-top:7px; }
-  .mod-queue-actions button{
-    flex:1; padding:6px; border-radius:7px; border:none; cursor:pointer;
-    font-size:11px; font-weight:600; font-family:'Inter', sans-serif;
-  }
-  .mod-approve{ background: var(--esprit); color:#fff; }
-  .mod-reject{ background: rgba(179,80,46,.12); color: var(--corps); }
 
   /* ---- accessibilité clavier : focus visible sur blocs et post-it ---- */
   .content-block:focus-visible{ outline:2px solid var(--esprit); outline-offset:4px; }
@@ -1674,9 +1606,6 @@
     /* ---- en-tête : carnet à gauche, annuler/rétablir à droite ---- */
     .notebook-selector{ padding:9px 13px; font-size:13px; }
     .notebook-selector-wrap{ gap:7px; top:16px; left:16px; }
-    .mode-switch{
-      top:16px; right:16px; padding:6px 10px 6px 12px; font-size:10.5px;
-    }
     .undo-redo-bar{
       top:60px; right:16px; left:auto; bottom:auto;
     }
@@ -1853,11 +1782,6 @@
     <span class="dot" aria-hidden="true"></span> En train d'écrire…
   </div>
 
-  <div class="mode-switch">
-    Mode : <span id="modeLabel">Public</span>
-    <button id="modeSwitchBtn" aria-pressed="false" aria-label="Basculer entre mode public et mode artiste"></button>
-  </div>
-
   <button id="previewExitBtn" type="button" style="display:none; position:fixed; top:26px; left:50%; transform:translateX(-50%); z-index:90; align-items:center; gap:8px; font-family:'Inter', sans-serif; font-size:13px; font-weight:600; color:#fff; background: rgba(65,82,107,.92); backdrop-filter: blur(10px); border:none; padding:9px 18px; border-radius:999px; cursor:pointer; box-shadow: 0 8px 22px rgba(20,17,10,.3);">
     👁 Mode aperçu — cliquez pour revenir à l'édition
   </button>
@@ -1876,7 +1800,6 @@
     </button>
     <button class="dock-btn" data-tool="postit" type="button" aria-label="Post-it">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11l3 3v13H5V4Z"/><path d="M16 4v3h3"/></svg>
-      <span class="dock-badge" id="dockModerationBadge" aria-hidden="true">0</span>
     </button>
     <button class="dock-btn dock-btn--plus" data-tool="plus" type="button" aria-label="Plus d'outils">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
@@ -1903,7 +1826,7 @@
       </button>
     </div>
 
-    <!-- ---- CARNET (nouveau : regroupe Autre carnet / Sécurité / Exporter, déplacés depuis « + ») ---- -->
+    <!-- ---- CARNET (regroupe Autre carnet / Exporter, déplacés depuis « + ») ---- -->
     <div class="panel-content" id="panelCarnet">
       <button class="accordion-action" id="previewModeBtn" type="button" style="margin-bottom:12px;">👁 Aperçu — voir comme un visiteur</button>
 
@@ -1927,29 +1850,9 @@
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="accordion-body" id="accordionExport">
-        <button class="accordion-action" id="exportImageBtn" type="button">Exporter la double-page (PNG)</button>
-        <button class="accordion-action" id="exportPdfBtn" type="button" style="margin-top:8px;">Exporter la double-page (PDF)</button>
+        <button class="accordion-action" id="exportPdfBtn" type="button">Exporter la double-page (PDF)</button>
         <button class="accordion-action" id="exportAllPdfBtn" type="button" style="margin-top:8px;">Exporter tout le carnet (PDF)</button>
         <div class="tool-hint" id="exportHint" aria-live="polite">Capture la double-page actuellement affichée, telle qu'elle apparaît au public.</div>
-      </div>
-
-      <button class="accordion-row" data-accordion="securite" type="button">
-        Sécurité
-        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="accordion-body" id="accordionSecurite">
-        <div class="plus-field">
-          <label for="securityNewPassword">Nouveau mot de passe</label>
-          <input type="password" id="securityNewPassword" placeholder="4 caractères min.">
-        </div>
-        <div class="plus-field">
-          <label for="securityConfirmPassword">Confirmer</label>
-          <input type="password" id="securityConfirmPassword" placeholder="Confirmer">
-        </div>
-        <div class="security-status" id="securityStatus" role="status" aria-live="polite"></div>
-        <button class="accordion-action" id="securityUpdateBtn" type="button">Mettre à jour le mot de passe</button>
-        <button class="accordion-action danger" id="forgetDeviceBtn" type="button" style="margin-top:8px;">Oublier cet appareil</button>
-        <div class="tool-hint">Protège l'accès au mode artiste sur cet appareil comme pour tout autre visiteur.</div>
       </div>
     </div>
 
@@ -2060,29 +1963,6 @@
         </button>
       </div>
 
-      <label>Colonnes</label>
-      <div class="tool-row">
-        <button class="tool-btn block-col-btn selected" data-cols="1" type="button">1</button>
-        <button class="tool-btn block-col-btn" data-cols="2" type="button">2</button>
-        <button class="tool-btn block-col-btn" data-cols="3" type="button">3</button>
-      </div>
-
-      <label>Gouttière (entre colonnes)</label>
-      <div class="tool-size-row">
-        <button class="tool-btn" id="colGapDown" type="button" style="flex:0 0 28px;">–</button>
-        <input type="number" id="blockColumnGap" value="16" min="0" max="60">
-        <span style="font-size:11px; color:var(--ink-soft);">px</span>
-        <button class="tool-btn" id="colGapUp" type="button" style="flex:0 0 28px;">+</button>
-      </div>
-
-      <label>Marge interne (padding)</label>
-      <div class="tool-size-row">
-        <button class="tool-btn" id="paddingDown" type="button" style="flex:0 0 28px;">–</button>
-        <input type="number" id="blockPadding" value="8" min="0" max="60">
-        <span style="font-size:11px; color:var(--ink-soft);">px</span>
-        <button class="tool-btn" id="paddingUp" type="button" style="flex:0 0 28px;">+</button>
-      </div>
-
       <label>Alignement vertical</label>
       <div class="tool-row">
         <button class="tool-btn block-valign-btn selected" data-valign="top" type="button" aria-label="Haut">
@@ -2141,12 +2021,6 @@
         <input type="color" id="drawColorInput" value="#41526b">
       </div>
       <div class="tool-hint" id="drawHint">Choisissez un outil, puis dessinez directement sur une page.</div>
-
-      <div class="plus-field" style="display:flex; align-items:center; justify-content:space-between; margin-top:14px;">
-        <label id="drawLayerToggleLabel" style="margin:0;">Dessin au premier plan</label>
-        <button type="button" class="mini-toggle" id="drawLayerToggle" aria-pressed="false" aria-labelledby="drawLayerToggleLabel"></button>
-      </div>
-      <div class="tool-hint">Passe le dessin devant ou derrière les blocs (texte, image, forme) de cette double-page.</div>
     </div>
 
     <!-- ---- FORME ---- -->
@@ -2319,25 +2193,12 @@
       </div>
     </div>
 
-    <!-- ---- POST-IT (nouveau : création + modération, déplacées depuis « + ») ---- -->
+    <!-- ---- POST-IT (création) ---- -->
     <div class="panel-content" id="panelPostit" style="display:none;">
       <button class="tool-btn" id="artistArmPostitBtn" type="button" style="width:100%; margin-bottom:12px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 5v14M5 12h14"/></svg> Déposer un post-it
       </button>
-      <div class="tool-hint" style="margin:0 0 8px;">Cliquez sur une page ou une marge après avoir armé l'outil.</div>
-
-      <button class="accordion-row" data-accordion="moderation" type="button">
-        <span>Modération <span class="mod-badge" id="moderationBadge" style="display:none;">0</span></span>
-        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="accordion-body" id="accordionModeration">
-        <div class="plus-field" style="display:flex; align-items:center; justify-content:space-between;">
-          <label id="moderationToggleLabel" style="margin:0;">Valider les post-it avant publication</label>
-          <button class="mini-toggle" id="moderationToggle" type="button" aria-pressed="false" aria-labelledby="moderationToggleLabel"></button>
-        </div>
-        <div id="moderationQueue" aria-live="polite"></div>
-        <div class="tool-hint">Les post-it en attente ne sont visibles que par vous, ici, jusqu'à validation.</div>
-      </div>
+      <div class="tool-hint" style="margin:0;">Cliquez sur une page ou une marge après avoir armé l'outil.</div>
     </div>
   </div>
 
@@ -2839,7 +2700,6 @@
     // dupliquer ces appels ici comme c'était le cas avant l'élargissement
     // de l'historique.
     renderSpread(spread);
-    updateModerationBadge();
     refreshStorageUsage();
   }
   async function undo(){
@@ -3004,7 +2864,7 @@
     if (artistMode || !isInterior(spread)) return;
     ['left', 'right'].forEach(side => {
       const container = side === 'left' ? entriesLeft : entriesRight;
-      const hasPostit = postitsCache.some(p => p.spread === spread && p.side === side && p.status !== 'pending');
+      const hasPostit = postitsCache.some(p => p.spread === spread && p.side === side);
       const hasBlock = blocksCache.some(b => b.spread === spread && b.side === side);
       const hasDrawing = (drawingsCache[spread + '-' + side] || []).length > 0;
       if (!hasPostit && !hasBlock && !hasDrawing){
@@ -3738,14 +3598,12 @@
       color, text, name, handle,
       edits: 0,
       replies: [],
-      status: moderationEnabled ? 'pending' : 'approved',
       createdAt: Date.now()
     };
     postitsCache.push(data);
     myCreations.push(data.id);
     await Promise.all([persistPostits(), persistMyCreations()]);
-    if (data.status !== 'pending' && data.spread === spread) buildPostitElement(data, true);
-    updateModerationBadge();
+    if (data.spread === spread) buildPostitElement(data, true);
     refreshStorageUsage();
     if (typeof updateBlankHints === 'function') updateBlankHints();
   }
@@ -3804,14 +3662,12 @@
     });
   }
 
-  // Ne montre que les post-it approuvés de la double-page actuellement
-  // affichée (les post-it en attente de modération restent invisibles,
-  // même pour l'artiste — ils apparaissent dans la file de modération).
+  // Affiche les post-it de la double-page actuellement affichée.
   function renderPostitsForSpread(){
     document.querySelectorAll('.postit').forEach(n => n.remove());
     const side = currentVisibleSide(); // null (desktop) = pas de filtre par côté
     postitsCache
-      .filter(p => p.spread === spread && p.status !== 'pending' && (!side || p.side === side))
+      .filter(p => p.spread === spread && (!side || p.side === side))
       .forEach(buildPostitElement);
     if (typeof updateBlankHints === 'function') updateBlankHints();
   }
@@ -4086,15 +3942,6 @@
     if (typeof renderEnvelopeContent === 'function') renderEnvelopeContent();
     if (typeof refreshEnvelopePanel === 'function') refreshEnvelopePanel();
 
-    const rawModeration = await storageGet('moderationEnabled:' + currentNotebookId, true);
-    moderationEnabled = rawModeration === '1';
-    if (moderationToggle){
-      moderationToggle.classList.toggle('on', moderationEnabled);
-      moderationToggle.setAttribute('aria-pressed', String(moderationEnabled));
-    }
-    updateModerationBadge();
-    primePendingNotifications();
-
     const rawVersion = await storageGet('dataVersion:' + currentNotebookId, true);
     localDataVersion = rawVersion ? (parseInt(rawVersion, 10) || 0) : 0;
 
@@ -4107,8 +3954,6 @@
   }
 
   // ============ MODE ARTISTE : bascule Public / Artiste (verrouillée par mot de passe) ============
-  const modeSwitchBtn = document.getElementById('modeSwitchBtn');
-  const modeLabel = document.getElementById('modeLabel');
   let artistMode = false;
 
   // Applique effectivement le changement de mode (UI + nettoyage des outils
@@ -4141,17 +3986,12 @@
     artistMode = on;
     document.body.classList.toggle('artist-mode', artistMode);
     // Marque cet appareil comme "reconnu" dès qu'il entre en mode artiste,
-    // quelle que soit la méthode (lien secret, mot de passe, token déjà
-    // mémorisé) : garantit que le bouton public/artiste reste visible pour
-    // le reste de la session même après un retour en aperçu public — y
-    // compris la toute première fois qu'un appareil utilise le lien secret,
-    // où aucun token n'existait encore au moment de tryAutoUnlockArtist().
+    // quelle que soit la méthode (lien secret, token déjà mémorisé) : sert
+    // notamment de repère pour tryAutoUnlockArtist() sur les visites
+    // suivantes de cet appareil.
     if (artistMode) document.body.classList.add('artist-device-recognized');
     if (typeof resetArtistDockPos === 'function') resetArtistDockPos();
     if (typeof resetPublicToolbarPos === 'function') resetPublicToolbarPos();
-    modeSwitchBtn.classList.toggle('on', artistMode);
-    modeSwitchBtn.setAttribute('aria-pressed', artistMode);
-    modeLabel.textContent = artistMode ? 'Artiste' : 'Public';
     if (artistMode){
       document.body.classList.remove('silent-reading');
       document.getElementById('publicSilentBtn')?.classList.remove('active');
@@ -4183,14 +4023,6 @@
     fitBookToViewport(); // la réserve d'espace en bas change (dock mobile visible ou non)
     setupLiveSync(); // s'active en public, se coupe en artiste (voir la fonction pour le pourquoi)
   }
-
-  modeSwitchBtn.addEventListener('click', () => {
-    if (!artistMode){
-      openArtistAuthModal();
-      return;
-    }
-    setArtistMode(false);
-  });
 
   // ---- authentification (mot de passe, hashé côté client, stocké partagé) ----
   // Il n'existe pas de vrai serveur ici : ce verrou empêche un visiteur de
@@ -4274,11 +4106,8 @@
 
   async function tryAutoUnlockArtist(){
     // Marque cet appareil comme "reconnu" dès qu'un token valide existe —
-    // indépendamment du mode affiché à l'instant. Sert à garder le bouton
-    // public/artiste visible même après un passage en aperçu public (voir
-    // CSS `.mode-switch`) : sans ça, repasser en public le ferait
-    // disparaître définitivement pour cette session, sans façon d'y revenir
-    // autrement qu'en retapant le lien secret depuis le début.
+    // repère interne utilisé ailleurs dans le code (ex. classe CSS
+    // `artist-device-recognized`), indépendant du mode affiché à l'instant.
     let token;
     try{ token = JSON.parse(localStorage.getItem(DEVICE_TOKEN_KEY) || 'null'); }
     catch(e){ token = null; }
@@ -4382,34 +4211,6 @@
     const result = await attemptArtistUnlock(pwd, artistAuthRemember.checked);
     if (result.ok) closeArtistAuthModal();
     else showArtistAuthError(result.msg);
-  });
-
-  // ---- changement du mot de passe depuis le panneau « + » (mode artiste uniquement) ----
-  const securityNewPassword = document.getElementById('securityNewPassword');
-  const securityConfirmPassword = document.getElementById('securityConfirmPassword');
-  const securityUpdateBtn = document.getElementById('securityUpdateBtn');
-  const securityStatus = document.getElementById('securityStatus');
-  securityUpdateBtn?.addEventListener('click', async () => {
-    const pwd = securityNewPassword.value;
-    securityStatus.textContent = '';
-    if (!pwd || pwd.length < 4){
-      securityStatus.textContent = '4 caractères minimum.';
-      return;
-    }
-    if (pwd !== securityConfirmPassword.value){
-      securityStatus.textContent = 'La confirmation ne correspond pas.';
-      return;
-    }
-    const hash = await sha256Hex(pwd);
-    await storageSet('artistPasswordHash', hash, true);
-    storeDeviceToken(hash); // garde cet appareil déverrouillé avec le nouveau mot de passe
-    securityNewPassword.value = '';
-    securityConfirmPassword.value = '';
-    securityStatus.textContent = 'Mot de passe mis à jour.';
-  });
-  document.getElementById('forgetDeviceBtn')?.addEventListener('click', () => {
-    forgetDevice();
-    securityStatus.textContent = 'Cet appareil devra ressaisir le mot de passe.';
   });
 
   // ============ MODE ARTISTE : compteur de visiteurs (simulé) ============
@@ -4526,7 +4327,6 @@
       postitsCache = postitsCache.filter(p => p.id !== data.id);
       el.remove();
       await persistPostits();
-      updateModerationBadge();
       if (typeof updateBlankHints === 'function') updateBlankHints();
     });
     el.appendChild(delBtn);
@@ -4552,9 +4352,6 @@
     if (tool === 'carnet'){
       refreshPlusNotebookList();
       refreshStorageUsage();
-    }
-    if (tool === 'postit'){
-      updateModerationBadge();
     }
     if (tool === 'enveloppe' && typeof refreshEnvelopePanel === 'function'){
       refreshEnvelopePanel();
@@ -4768,12 +4565,6 @@
   const blockLetterSpacing = document.getElementById('blockLetterSpacing');
   const letterSpacingUp = document.getElementById('letterSpacingUp');
   const letterSpacingDown = document.getElementById('letterSpacingDown');
-  const blockColumnGap = document.getElementById('blockColumnGap');
-  const colGapUp = document.getElementById('colGapUp');
-  const colGapDown = document.getElementById('colGapDown');
-  const blockPadding = document.getElementById('blockPadding');
-  const paddingUp = document.getElementById('paddingUp');
-  const paddingDown = document.getElementById('paddingDown');
   const blockColorInput = document.getElementById('blockColorInput');
   const blockImageUrl = document.getElementById('blockImageUrl');
   const blockImageFile = document.getElementById('blockImageFile');
@@ -4880,7 +4671,6 @@
   let editingBlockId = null;   // id du bloc image en cours d'édition (panneau pré-rempli), sinon null
   let editingTextBlockId = null; // id du bloc de texte actuellement en édition « in-place » sur la page
   let blockAlign = 'left';
-  let blockColumns = 1;
   let blockVAlign = 'top';
   let blockBold = false, blockItalic = false, blockUnderline = false, blockHighlight = false;
 
@@ -5164,15 +4954,6 @@
       styleUndoPending = false;
     });
   });
-  artistPanel.querySelectorAll('.block-col-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      artistPanel.querySelectorAll('.block-col-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      blockColumns = +btn.dataset.cols;
-      applyTextStyleToSelected();
-      styleUndoPending = false;
-    });
-  });
   artistPanel.querySelectorAll('.block-valign-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       artistPanel.querySelectorAll('.block-valign-btn').forEach(b => b.classList.remove('selected'));
@@ -5188,20 +4969,14 @@
   lineHeightDown.addEventListener('click', () => { blockLineHeight.value = (Math.max(1, (parseFloat(blockLineHeight.value) || 1.6) - 0.1)).toFixed(1); applyTextStyleToSelected(); });
   letterSpacingUp.addEventListener('click', () => { blockLetterSpacing.value = (Math.min(10, (parseFloat(blockLetterSpacing.value) || 0) + 0.5)); applyTextStyleToSelected(); });
   letterSpacingDown.addEventListener('click', () => { blockLetterSpacing.value = (Math.max(-2, (parseFloat(blockLetterSpacing.value) || 0) - 0.5)); applyTextStyleToSelected(); });
-  colGapUp.addEventListener('click', () => { blockColumnGap.value = Math.min(60, (parseInt(blockColumnGap.value, 10) || 16) + 2); applyTextStyleToSelected(); });
-  colGapDown.addEventListener('click', () => { blockColumnGap.value = Math.max(0, (parseInt(blockColumnGap.value, 10) || 16) - 2); applyTextStyleToSelected(); });
-  paddingUp.addEventListener('click', () => { blockPadding.value = Math.min(60, (parseInt(blockPadding.value, 10) || 8) + 2); applyTextStyleToSelected(); });
-  paddingDown.addEventListener('click', () => { blockPadding.value = Math.max(0, (parseInt(blockPadding.value, 10) || 8) - 2); applyTextStyleToSelected(); });
   blockFontFamily.addEventListener('change', applyTextStyleToSelected);
   blockSizeInput.addEventListener('input', applyTextStyleToSelected);
   blockLineHeight.addEventListener('input', applyTextStyleToSelected);
   blockLetterSpacing.addEventListener('input', applyTextStyleToSelected);
   blockColorInput.addEventListener('input', applyTextStyleToSelected);
-  blockColumnGap.addEventListener('input', applyTextStyleToSelected);
-  blockPadding.addEventListener('input', applyTextStyleToSelected);
   // au relâchement d'un contrôle, le prochain ajustement ouvrira une nouvelle
   // étape d'historique plutôt que de continuer à fusionner avec celui-ci
-  [blockFontFamily, blockSizeInput, blockLineHeight, blockLetterSpacing, blockColorInput, blockColumnGap, blockPadding]
+  [blockFontFamily, blockSizeInput, blockLineHeight, blockLetterSpacing, blockColorInput]
     .forEach(inp => inp.addEventListener('change', () => { styleUndoPending = false; }));
 
   function currentTextStyle(){
@@ -5212,9 +4987,6 @@
       letterSpacing: parseFloat(blockLetterSpacing.value) || 0,
       color: blockColorInput.value,
       align: blockAlign,
-      columns: blockColumns,
-      columnGap: parseInt(blockColumnGap.value, 10) || 16,
-      padding: parseInt(blockPadding.value, 10) || 8,
       vAlign: blockVAlign,
       bold: blockBold, italic: blockItalic, underline: blockUnderline, highlight: blockHighlight
     };
@@ -5256,11 +5028,9 @@
     txt.style.color = b.color;
     txt.style.textAlign = b.align;
     txt.style.textAlignLast = b.align === 'justify' ? 'left' : '';
-    txt.style.columnCount = b.columns;
-    txt.style.columnGap = (b.columnGap != null ? b.columnGap : 16) + 'px';
     txt.style.lineHeight = b.lineHeight;
     txt.style.letterSpacing = b.letterSpacing + 'px';
-    txt.style.padding = (b.padding != null ? b.padding : 8) + 'px';
+    txt.style.padding = '8px';
     txt.style.fontWeight = b.bold ? '700' : '400';
     txt.style.fontStyle = b.italic ? 'italic' : 'normal';
     txt.style.textDecoration = b.underline ? 'underline' : 'none';
@@ -5835,10 +5605,7 @@
       // repositionner le curseur (comportement natif du contenteditable),
       // il ne doit surtout pas re-déclencher selectBlock() — sinon l'état
       // "sélectionné" (poignées visibles) s'ajoute par-dessus l'état
-      // "édition" sans jamais passer par exitTextEditMode(), laissant des
-      // réglages temporaires (colonnes désactivées pendant la frappe, voir
-      // enterTextEditMode) bloqués indéfiniment tant qu'un vrai clic
-      // extérieur ne survient pas.
+      // "édition" sans jamais passer par exitTextEditMode().
       if (editingTextBlockId === b.id) return;
       // Un AUTRE bloc était en cours d'édition : on le clôt proprement
       // d'abord (mêmes raisons), avant de sélectionner celui-ci.
@@ -6074,14 +5841,6 @@
     el.classList.add('editing');
     el.classList.remove('selected');
     txt.contentEditable = 'true';
-    // Bug connu des navigateurs : la mise en page multi-colonnes
-    // (column-count) ne s'affiche pas correctement sur un élément
-    // contenteditable — d'où la différence public (jamais éditable) /
-    // artiste (éditable pendant la frappe). On bascule donc temporairement
-    // en 1 colonne le temps de l'édition, et on rétablit le vrai réglage à
-    // la sortie (voir exitTextEditMode) : la donnée b.columns n'est jamais
-    // modifiée, seul l'affichage momentané pendant la frappe change.
-    if ((b.columns || 1) > 1) txt.style.columnCount = 1;
     txt.focus();
     // place le curseur à la fin du texte existant (ou dans le cadre vide, tout juste créé)
     const range = document.createRange();
@@ -6157,7 +5916,6 @@
         if (b){
           b.text = normalizeRichHtml(txt.innerHTML);
           txt.innerHTML = b.text; // ré-applique la version propre (sûr ici, l'édition est terminée)
-          txt.style.columnCount = b.columns; // rétablit les colonnes désactivées pendant l'édition
         }
       }
       el.classList.remove('editing');
@@ -6230,17 +5988,13 @@
       blockSizeInput.value = b.fontSize;
       blockLineHeight.value = b.lineHeight;
       blockLetterSpacing.value = b.letterSpacing;
-      blockColumnGap.value = b.columnGap != null ? b.columnGap : 16;
-      blockPadding.value = b.padding != null ? b.padding : 8;
       blockColorInput.value = b.color;
-      blockAlign = b.align; blockColumns = b.columns; blockVAlign = b.vAlign || 'top';
+      blockAlign = b.align; blockVAlign = b.vAlign || 'top';
       blockBold = !!b.bold; blockItalic = !!b.italic; blockUnderline = !!b.underline; blockHighlight = !!b.highlight;
-      // filet de sécurité : réapplique le vrai style (colonnes incluses) au
-      // cas où un état temporaire (ex: colonnes désactivées pendant une
-      // édition mal refermée) serait resté accroché à l'élément.
+      // filet de sécurité : réapplique le vrai style au cas où un état
+      // temporaire serait resté accroché à l'élément.
       { const selTxt = document.getElementById(id)?.querySelector('.block-text'); if (selTxt) styleTextEl(selTxt, b); }
       artistPanel.querySelectorAll('.block-align-btn').forEach(x => x.classList.toggle('selected', x.dataset.align === b.align));
-      artistPanel.querySelectorAll('.block-col-btn').forEach(x => x.classList.toggle('selected', +x.dataset.cols === b.columns));
       artistPanel.querySelectorAll('.block-valign-btn').forEach(x => x.classList.toggle('selected', x.dataset.valign === blockVAlign));
       artistPanel.querySelectorAll('.block-format-btn').forEach(x => {
         const on = !!{ bold: blockBold, italic: blockItalic, underline: blockUnderline, highlight: blockHighlight }[x.dataset.format];
@@ -6432,9 +6186,6 @@
       scope.querySelectorAll('.accordion-row[data-accordion]').forEach(r => r.classList.remove('expanded'));
       if (!wasOpen){
         body.classList.add('open'); row.classList.add('expanded');
-        if (key === 'moderation'){
-          refreshModerationFromStorage().then(renderModerationQueue);
-        }
       }
     });
   });
@@ -6563,45 +6314,10 @@
       (ratio > 0.8 ? ` — attention, les blocs (images) approchent la limite de ${formatBytes(STORAGE_KEY_LIMIT)}` : '');
   }
 
-  // ============ Modération des post-it ============
-  // Quand activée, tout nouveau post-it public passe par une file d'attente
-  // visible uniquement de l'artiste (ici) avant d'apparaître sur les pages.
-  let moderationEnabled = false;
-  const moderationToggle = document.getElementById('moderationToggle');
-  const moderationBadge = document.getElementById('moderationBadge');
-  const moderationQueue = document.getElementById('moderationQueue');
-
-  moderationToggle?.addEventListener('click', async () => {
-    moderationEnabled = !moderationEnabled;
-    moderationToggle.classList.toggle('on', moderationEnabled);
-    moderationToggle.setAttribute('aria-pressed', String(moderationEnabled));
-    await storageSet('moderationEnabled:' + currentNotebookId, moderationEnabled ? '1' : '0', true);
-  });
-
-  function updateModerationBadge(){
-    const count = postitsCache.filter(p => p.status === 'pending').length;
-    if (moderationBadge){
-      moderationBadge.style.display = count > 0 ? 'inline-flex' : 'none';
-      moderationBadge.textContent = count;
-    }
-    updateDockModerationBadge(count);
-  }
-  function updateDockModerationBadge(count){
-    const el = document.getElementById('dockModerationBadge');
-    if (!el) return;
-    el.style.display = count > 0 ? 'flex' : 'none';
-    el.textContent = count;
-  }
-
-  // ============ Notifications discrètes à l'artiste ============
-  // Sans back-end temps réel, on simule une notification « nouveau post-it à
-  // valider » par un sondage léger : si le compte de post-it en attente
-  // augmente depuis le dernier sondage, un signal sonore bref est joué et
-  // les badges se mettent à jour, même si le panneau « + » est fermé.
-  let lastKnownPendingCount = 0;
-  function primePendingNotifications(){
-    lastKnownPendingCount = postitsCache.filter(p => p.status === 'pending').length;
-  }
+  // ============ Notification visiteur : réponse de l'artiste ============
+  // Signal discret côté visiteur : si l'un de ses propres post-it
+  // (myCreations) a reçu une nouvelle réponse étiquetée « Artiste » depuis
+  // le dernier sondage, un signal sonore bref est joué et un toast s'affiche.
   function playNotificationChime(){
     try{
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -6618,33 +6334,8 @@
       g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
       o.start(now); o.stop(now + 0.4);
       o.onended = () => ctx.close();
-    } catch(e){ /* audio indisponible : le badge visuel suffit */ }
+    } catch(e){ /* audio indisponible : le toast visuel suffit */ }
   }
-  async function pollPendingNotifications(){
-    if (!artistMode) return;
-    try{
-      const raw = await storageGet('postits:' + currentNotebookId, true);
-      const fresh = raw ? JSON.parse(raw) : [];
-      const pendingCount = fresh.filter(p => p.status === 'pending').length;
-      if (pendingCount > lastKnownPendingCount){
-        playNotificationChime();
-        showToast(pendingCount === 1 ? 'Un nouveau post-it attend votre validation.' : `${pendingCount} post-it attendent votre validation.`);
-      }
-      lastKnownPendingCount = pendingCount;
-      if (moderationBadge){
-        moderationBadge.style.display = pendingCount > 0 ? 'inline-flex' : 'none';
-        moderationBadge.textContent = pendingCount;
-      }
-      updateDockModerationBadge(pendingCount);
-    } catch(e){ /* stockage indisponible pour ce cycle : on réessaiera au suivant */ }
-  }
-  setInterval(pollPendingNotifications, 6000);
-
-  // ============ Notification visiteur : réponse de l'artiste ============
-  // Même principe que pollPendingNotifications côté artiste, mais côté
-  // visiteur : si l'un de ses propres post-it (myCreations) a reçu une
-  // nouvelle réponse étiquetée « Artiste » depuis le dernier sondage, on
-  // joue le même signal sonore et on affiche un toast.
   async function pollArtistReplies(){
     if (artistMode || !myCreations.length) return;
     try{
@@ -6670,63 +6361,10 @@
   }
   setInterval(pollArtistReplies, 6000);
 
-  // Recharge postitsCache depuis le stockage partagé avant d'afficher la file
-  // de modération : un post-it créé sur un autre appareil doit apparaître ici
-  // même si cette session n'a pas ré-ouvert le carnet depuis.
-  async function refreshModerationFromStorage(){
-    try{
-      const raw = await storageGet('postits:' + currentNotebookId, true);
-      const fresh = raw ? JSON.parse(raw) : [];
-      postitsCache = fresh;
-      lastKnownPendingCount = fresh.filter(p => p.status === 'pending').length;
-    } catch(e){ /* stockage indisponible : on garde la file locale existante */ }
-  }
-
-  function renderModerationQueue(){
-    if (!moderationQueue) return;
-    const pending = postitsCache.filter(p => p.status === 'pending');
-    if (!pending.length){
-      moderationQueue.innerHTML = '<div class="reply-empty">Aucun post-it en attente.</div>';
-      return;
-    }
-    moderationQueue.innerHTML = pending.map(p => {
-      const label = p.name ? escapeHTML(p.name) : (p.handle ? '@' + escapeHTML(p.handle) : 'Anonyme');
-      return `
-        <div class="mod-queue-item" data-id="${p.id}">
-          <div class="mod-queue-text">${escapeHTML(p.text)}</div>
-          <div class="mod-queue-meta">${label} — page ${pageNumbers(p.spread).indicator}</div>
-          <div class="mod-queue-actions">
-            <button type="button" class="mod-approve" data-id="${p.id}">Approuver</button>
-            <button type="button" class="mod-reject" data-id="${p.id}">Refuser</button>
-          </div>
-        </div>`;
-    }).join('');
-    moderationQueue.querySelectorAll('.mod-approve').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const p = postitsCache.find(x => x.id === btn.dataset.id);
-        if (p) p.status = 'approved';
-        await persistPostits();
-        renderModerationQueue();
-        updateModerationBadge();
-        renderPostitsForSpread();
-      });
-    });
-    moderationQueue.querySelectorAll('.mod-reject').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        pushUndo();
-        postitsCache = postitsCache.filter(x => x.id !== btn.dataset.id);
-        await persistPostits();
-        renderModerationQueue();
-        updateModerationBadge();
-      });
-    });
-  }
-
-  // ============ Export de la double-page (PNG / PDF) ============
-  // html2canvas capture le DOM du carnet en image ; jsPDF (optionnel)
-  // l'encapsule dans un PDF. Les deux sont chargés via cdnjs — en l'absence
-  // de réseau, les boutons signalent simplement l'indisponibilité.
-  const exportImageBtn = document.getElementById('exportImageBtn');
+  // ============ Export de la double-page (PDF) ============
+  // html2canvas capture le DOM du carnet en image ; jsPDF l'encapsule dans
+  // un PDF. Chargés via cdnjs — en l'absence de réseau, les boutons
+  // signalent simplement l'indisponibilité.
   const exportPdfBtn = document.getElementById('exportPdfBtn');
   const exportHint = document.getElementById('exportHint');
   const EXPORT_DEFAULT_HINT = exportHint ? exportHint.textContent : '';
@@ -6747,29 +6385,6 @@
       document.querySelectorAll('.content-block').forEach(el => el.classList.remove('export-hide-ui'));
     }
   }
-  exportImageBtn?.addEventListener('click', async () => {
-    if (typeof html2canvas !== 'function'){
-      exportHint.textContent = "Bibliothèque d'export indisponible (hors-ligne ?).";
-      return;
-    }
-    if (exportImageBtn.disabled) return; // évite un double export si double-clic pendant la capture
-    exportImageBtn.disabled = true;
-    exportHint.textContent = 'Génération en cours…';
-    try{
-      const canvas = await captureSpreadCanvas();
-      const link = document.createElement('a');
-      link.download = `carnet-page-${spread * 2}-${spread * 2 + 1}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-      exportHint.textContent = 'Image téléchargée.';
-    } catch(e){
-      console.error('Export image impossible', e);
-      exportHint.textContent = "Échec de l'export.";
-    } finally {
-      exportImageBtn.disabled = false;
-      setTimeout(() => { if (exportHint) exportHint.textContent = EXPORT_DEFAULT_HINT; }, 3000);
-    }
-  });
   exportPdfBtn?.addEventListener('click', async () => {
     if (typeof html2canvas !== 'function' || !window.jspdf){
       exportHint.textContent = "Bibliothèque d'export indisponible (hors-ligne ?).";
