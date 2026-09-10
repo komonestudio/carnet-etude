@@ -277,45 +277,6 @@
   }
   body.showing-cover-front .book-elastic{ display:block; }
 
-  /* ---------- Signet / marque-page ----------
-     Repensé sur le modèle des post-it plutôt qu'ancré à la reliure : une
-     étiquette compacte, déplaçable dans la marge (comme un post-it — voir
-     .postit), toujours rattachée à la double-page où elle a été posée
-     (spread + side + relX/relY mémorisés, JS — voir renderBookmarkTag()).
-     position:fixed + coordonnées calculées via getZoneRect()/fromRelative(),
-     exactement le même mécanisme que .postit, pour ne réinventer aucune
-     logique de zone ou de glisser-déposer. */
-  .book-ribbon{
-    position:fixed;
-    width: min(140px, 24vw); /* ≈1/3 de la largeur d'une page (420px desktop, ou --page-vw/3 en mobile) */
-    aspect-ratio: 189 / 794; /* format réel d'un marque-page — la hauteur suit, un peu moins que la hauteur du carnet (595px) */
-    height:auto;
-    z-index:30;
-    cursor:grab;
-    touch-action:none;
-    overflow:hidden; /* garde le grain papier dans les coins arrondis */
-    border-radius: 10px;
-    background: linear-gradient(160deg, var(--bm-c1, #d17849) 0%, var(--bm-c2, var(--corps)) 55%, var(--bm-c3, #8a3a1f) 100%);
-    box-shadow: 0 10px 22px rgba(20,17,10,.24), 0 2px 6px rgba(20,17,10,.14), inset 0 22px 14px -16px rgba(0,0,0,.28);
-    transition: box-shadow .15s ease;
-  }
-  .book-ribbon.dragging{ cursor:grabbing; box-shadow: 0 20px 34px rgba(20,17,10,.32); }
-  .book-ribbon::before{
-    /* grain papier discret, même texture que la couverture du carnet */
-    content:"";
-    position:absolute; inset:0;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    opacity:.12;
-    mix-blend-mode:overlay;
-    pointer-events:none;
-  }
-  .book-ribbon::after{
-    /* fin liseré clair en haut, façon pli du papier */
-    content:"";
-    position:absolute; top:0; left:0; right:0; height:2px;
-    background: rgba(255,255,255,.35);
-  }
-
   /* ---------- Mise à l'échelle responsive ----------
      Bureau : le carnet garde des dimensions internes constantes en pixels ;
      c'est .book-scale-wrap qui est réduit/agrandi via transform:scale() pour
@@ -511,7 +472,6 @@
        préserve exactement la forme (voir override mobile plus bas). */
     width:280px; height:420px;
     transform: translate(-50%, -50%);
-    perspective: 1000px;
     z-index:2;
   }
   .envelope{
@@ -562,7 +522,7 @@
     border: 1px solid rgba(0,0,0,.1);
     border-radius: 5px;
     box-shadow: 0 4px 10px rgba(20,17,10,.15);
-    z-index:3;
+    z-index:5;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
     text-align:center; padding:16px; overflow:hidden;
     font-family:'Newsreader', serif; font-style:italic; color: var(--ink-soft); font-size:13px; line-height:1.5;
@@ -585,19 +545,17 @@
   }
 
   /* rabat principal : charnière à GAUCHE, pointe à DROITE, triangle net aux
-     sommets légèrement adoucis — s'ouvre en pivotant vers la droite */
+     sommets légèrement adoucis — reste fixe en place (ne pivote plus à
+     l'ouverture) ; c'est la lettre (z-index supérieur, voir .envelope-letter)
+     qui apparaît au-dessus de lui avec son animation propre. */
   .envelope-flap{
     position:absolute; inset:0;
     z-index:4;
-    transform-style: preserve-3d;
-    transform-origin: left center;
-    transition: transform .6s cubic-bezier(.5,0,.25,1);
     background: linear-gradient(160deg, var(--env-c1, #f3ead8) 0%, var(--env-c2, #e8dcc0) 55%, var(--env-c3, #ddcfa9) 100%);
     border: 1px solid rgba(0,0,0,.12);
     box-shadow: 6px 4px 12px rgba(0,0,0,.2);
     clip-path: path("M 0,16 Q 0,0 12,11 L 236,199 Q 248,210 236,221 L 12,410 Q 0,420 0,404 L 0,16 Z");
   }
-  .envelope.open .envelope-flap{ transform: rotateY(180deg); }
   .envelope-flap::after{
     content:"";
     position:absolute; inset:0;
@@ -1771,11 +1729,10 @@
        larges pour rejoindre le bord droit sur un écran étroit). */
     .zoom-float-panel{ top:100px; left:16px; bottom:auto; right:auto; }
 
-    /* Dock allégé sur mobile : Enveloppe et Signet, moins fréquents, migrent
-       dans le menu « + » (raccourcis ajoutés en haut de panelPlus) pour
+    /* Dock allégé sur mobile : Enveloppe, moins fréquente, migre
+       dans le menu « + » (raccourci ajouté en haut de panelPlus) pour
        laisser plus d'espace tactile aux outils courants. */
-    .artist-dock .dock-btn[data-tool="enveloppe"],
-    .artist-dock .dock-btn[data-tool="signet"]{ display:none; }
+    .artist-dock .dock-btn[data-tool="enveloppe"]{ display:none; }
     .mobile-only-shortcuts{ display:flex; }
 
     /* ---- masquage auto du chrome flottant au repos (lecture) : laisse
@@ -1828,7 +1785,7 @@
   body.single-page-mode .swipe-hint{ display:block; }
   body.single-page-mode.artist-mode .swipe-hint{ display:none; }
 
-  /* ---- infobulles au survol des outils publics (Carnet/Post-it/Signet/
+  /* ---- infobulles au survol des outils publics (Carnet/Post-it/
      Lecture silencieuse/Zoom/Mode sombre) — même esprit visuel que
      .swipe-hint ci-dessus (texte italique fin, sans encadré ni ombre),
      plutôt qu'une bulle native du navigateur (délai variable, style
@@ -1862,13 +1819,7 @@
     }
     .public-toolbar .dock-btn[data-tooltip]:hover::after,
     .zoom-float-btn[data-tooltip]:hover::after{ opacity:1; }
-  }  /* Orientation forcée d'un dock déplacé à la main : verticale s'il est
-     lâché près du bord gauche/droit, horizontale près du bord haut/bas —
-     voir makeDraggableDock(). !important nécessaire pour l'emporter sur la
-     règle liée à la largeur d'écran (@media max-width:900px), qui impose
-     sinon flex-direction:row indépendamment de la position réelle. */
-  .dock-orient-vertical{ flex-direction:column !important; }
-  .dock-orient-horizontal{ flex-direction:row !important; }
+  }
 </style>
 </head>
 <body>
@@ -1922,9 +1873,6 @@
     </button>
     <button class="dock-btn" data-tool="enveloppe" type="button" aria-label="Enveloppe">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 6.5l9 6.5 9-6.5"/></svg>
-    </button>
-    <button class="dock-btn" data-tool="signet" type="button" aria-label="Signet">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
     </button>
     <button class="dock-btn" data-tool="postit" type="button" aria-label="Post-it">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11l3 3v13H5V4Z"/><path d="M16 4v3h3"/></svg>
@@ -2263,7 +2211,6 @@
         <option value="solid">Simple</option>
         <option value="dotted">Pointillé</option>
         <option value="dashed">Tirets</option>
-        <option value="wave">Vague / Fantaisie</option>
       </select>
 
       <label for="imgBorderRadiusInput">Arrondi des angles</label>
@@ -2272,7 +2219,7 @@
         <span id="imgBorderRadiusLabel" style="font-size:11px; color:var(--ink-soft); min-width:36px; text-align:right;">0 px</span>
       </div>
 
-      <div class="tool-hint">Sélectionnez une image sur la page pour modifier son contour. Le style « Vague » génère un motif SVG à partir de la couleur choisie. L'arrondi s'applique à l'image comme à son contour, quel que soit le style choisi.</div>
+      <div class="tool-hint">Sélectionnez une image sur la page pour modifier son contour. L'arrondi s'applique à l'image comme à son contour, quel que soit le style choisi.</div>
     </div>
 
     <!-- ---- + (simplifié : arrière-plan / couverture uniquement — le reste a
@@ -2280,7 +2227,6 @@
     <div class="panel-content" id="panelPlus" style="display:none;">
       <div class="tool-row mobile-only-shortcuts" style="margin-bottom:12px;">
         <button class="accordion-action" id="plusOpenEnveloppeBtn" type="button" style="flex:1;">Enveloppe</button>
-        <button class="accordion-action" id="plusOpenSignetBtn" type="button" style="flex:1;">Signet</button>
       </div>
       <button class="accordion-row" data-accordion="background" type="button">
         Modifier l'arrière-plan
@@ -2392,28 +2338,6 @@
         <div id="moderationQueue" aria-live="polite"></div>
         <div class="tool-hint">Les post-it en attente ne sont visibles que par vous, ici, jusqu'à validation.</div>
       </div>
-    </div>
-
-    <!-- ---- SIGNET (marque-page façon post-it) ---- -->
-    <div class="panel-content" id="panelSignet" style="display:none;">
-      <div class="tool-hint" style="margin:0 0 10px;">Une étiquette marque la double-page de votre choix — glissez-la dans la marge pour ne pas gêner la lecture.</div>
-      <div class="plus-field" id="signetStatus" style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">Aucun signet placé pour l'instant.</div>
-      <button class="accordion-action" id="signetPlaceHereBtn" type="button">Placer le signet sur cette double-page</button>
-      <button class="accordion-action" id="signetGoToBtn" type="button" style="margin-top:8px; display:none;">Aller à cette page</button>
-      <button class="accordion-action" id="signetRemoveBtn" type="button" style="margin-top:8px; display:none;">Retirer le signet</button>
-      <label for="signetColorInput" style="margin-top:14px;">Couleur du marque-page</label>
-      <input type="color" id="signetColorInput" value="#b3502e">
-      <button type="button" class="accordion-action" id="signetColorReset" style="margin-top:8px;">Couleur par défaut</button>
-
-      <label for="signetImageFile" style="margin-top:14px;">Image du marque-page</label>
-      <input type="file" id="signetImageFile" accept="image/*">
-      <div class="image-preview-wrap" id="signetImagePreviewWrap" style="display:none;">
-        <img id="signetImagePreview" alt="Aperçu">
-        <button type="button" class="accordion-action" id="signetImageClear" style="margin-top:8px;">Retirer l'image</button>
-      </div>
-      <label for="signetImageInput">ou URL de l'image</label>
-      <input type="text" id="signetImageInput" placeholder="https://…">
-      <div class="tool-hint" style="margin-top:8px;">L'image remplace la couleur tant qu'elle est présente.</div>
     </div>
   </div>
 
@@ -2610,9 +2534,6 @@
     </button>
     <button class="dock-btn" id="publicPostitBtn" type="button" aria-label="Déposer un post-it" data-tooltip="Déposer un post-it">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11l3 3v13H5V4Z"/><path d="M16 4v3h3"/></svg>
-    </button>
-    <button class="dock-btn" id="publicBookmarkBtn" type="button" aria-label="Aller au signet" data-tooltip="Aller à la page marquée" style="display:none;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
     </button>
     <button class="dock-btn" id="publicSilentBtn" type="button" aria-label="Lecture silencieuse" data-tooltip="Lecture silencieuse (masquer les post-it)" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
@@ -2854,13 +2775,12 @@
       drawings: JSON.stringify(drawingsCache),
       // Élargi pour couvrir tout ce que le panneau « + » modifie et qui
       // n'était pas suivi jusqu'ici : couverture avant/arrière, activation
-      // de la couverture arrière, fond du site, enveloppe, signet.
+      // de la couverture arrière, fond du site, enveloppe.
       coverFront: JSON.stringify(coverFront),
       coverBack: JSON.stringify(coverBack),
       backCoverEnabled: backCoverEnabled,
       backgrounds: JSON.stringify(backgroundsCache),
-      envelope: JSON.stringify(envelopeConfig),
-      bookmark: JSON.stringify({ spread: bookmarkSpread, side: bookmarkSide, relX: bookmarkRelX, relY: bookmarkRelY, color: bookmarkColor, image: bookmarkImage })
+      envelope: JSON.stringify(envelopeConfig)
     };
   }
   function restoreSnapshot(snap){
@@ -2877,7 +2797,6 @@
     backCoverEnabled = snap.backCoverEnabled;
     backgroundsCache = JSON.parse(snap.backgrounds); // jamais référencé ailleurs par identité stable : réaffectation directe déjà pratiquée partout ailleurs dans le code
     Object.assign(envelopeConfig, JSON.parse(snap.envelope));
-    { const bm = JSON.parse(snap.bookmark); bookmarkSpread = bm.spread; bookmarkSide = bm.side; bookmarkRelX = bm.relX; bookmarkRelY = bm.relY; bookmarkColor = bm.color || ''; bookmarkImage = bm.image || ''; }
   }
   function pushUndo(){
     if (!artistMode) return;
@@ -2908,8 +2827,7 @@
       persistCoverBack(),
       persistBackCoverEnabled(),
       persistBackgrounds(),
-      persistEnvelopeConfig(),
-      persistBookmarkSpread()
+      persistEnvelopeConfig()
     ]);
     applyCoverColor();
     applyEnvelopeColor();
@@ -2917,7 +2835,7 @@
     if (typeof refreshEnvelopePanel === 'function') refreshEnvelopePanel();
     // renderSpread() reprend déjà tout le nécessaire pour la double-page
     // courante : post-it, blocs, dessins, fond, surface de couverture (si
-    // affichée), boutons de nav, panneaux Couverture/Signet — inutile de
+    // affichée), boutons de nav, panneau Couverture — inutile de
     // dupliquer ces appels ici comme c'était le cas avant l'élargissement
     // de l'historique.
     renderSpread(spread);
@@ -2952,9 +2870,8 @@
   // relâche du champ (pousse un pushUndo), gate.reset() à relier à
   // l'évènement 'change' (relâche du champ) pour repartir sur une nouvelle
   // étape au prochain ajustement. Centralise ce qui était dupliqué à
-  // l'identique à plusieurs endroits (fond, enveloppe, signet…), pour éviter
-  // qu'un nouvel endroit oublie le regroupement (comme ce fut le cas pour
-  // l'URL du marque-page).
+  // l'identique à plusieurs endroits (fond, enveloppe…), pour éviter
+  // qu'un nouvel endroit oublie le regroupement.
   function makeGroupedUndoGate(){
     let pending = false;
     return {
@@ -3046,12 +2963,6 @@
   let totalSpreads = 1; // nombre de doubles-pages INTÉRIEURES créées pour le carnet courant (dynamique, persisté)
   let spread = 0;
   let backCoverEnabled = false;
-  let bookmarkSpread = null; // double-page (interior) marquée par le signet — null = aucun
-  let bookmarkSide = 'left'; // 'left' | 'right' — comme un post-it, sa position dans la marge
-  let bookmarkRelX = 0.15, bookmarkRelY = 0.08; // position relative dans la zone marge+page (voir toRelative/fromRelative)
-  let bookmarkColor = ''; // '' = couleur par défaut (terracotta, --corps)
-  let bookmarkImage = ''; // '' = pas d'image, le marque-page reste en couleur unie
-  const DEFAULT_BOOKMARK_COLOR = '#b3502e';
   let coverFront = { title: "Carnet d'étude", image: '', color: '' };
   let coverBack = { title: '', image: '', color: '' };
   const DEFAULT_ENVELOPE_COLOR = '#e5d9bf';
@@ -3329,9 +3240,7 @@
     }
     updateNavButtons();
     updateSinglePageView(); // ré-affirme l'indicateur, les marges et la page visible en mode mobile
-    if (typeof renderBookmarkTag === 'function') renderBookmarkTag();
     if (typeof refreshCoverEditorPanel === 'function') refreshCoverEditorPanel();
-    if (typeof refreshSignetPanel === 'function') refreshSignetPanel();
   }
 
   // À la dernière double-page intérieure : en mode artiste, la flèche
@@ -3542,13 +3451,6 @@
     });
     drawingsCache = shiftedDrawings;
 
-    // 2bis) le signet suit le même décalage : retiré si sa page disparaît,
-    // sinon décalé d'un cran comme le reste du contenu qui suit
-    if (bookmarkSpread != null){
-      if (bookmarkSpread === toDelete) bookmarkSpread = null;
-      else if (bookmarkSpread > toDelete) bookmarkSpread -= 1;
-    }
-
     totalSpreads -= 1;
     if (spread > totalSpreads) spread = totalSpreads;
 
@@ -3557,7 +3459,6 @@
     await persistBlocks();
     await storageSet('drawings:' + currentNotebookId, JSON.stringify(drawingsCache), true);
     await storageSet('totalSpreads:' + currentNotebookId, String(totalSpreads), true);
-    if (typeof persistBookmarkSpread === 'function') await persistBookmarkSpread();
 
     renderSpread(spread);
     refreshStorageUsage();
@@ -3922,7 +3823,7 @@
     return d.innerHTML;
   }
 
-  // En mode artiste, un post-it (ou le signet) peut être déplacé librement
+  // En mode artiste, un post-it peut être déplacé librement
   // sur toute la double page + marges, pas seulement sa zone d'origine —
   // d'où l'extension de zone ci-dessous, intégrée directement à la
   // fonction plutôt que réassignée plus loin dans le fichier (une
@@ -4139,8 +4040,8 @@
     totalSpreads = (!isNaN(parsedTotal) && parsedTotal >= 1) ? parsedTotal : 1;
 
     // Reprend la dernière double-page consultée par ce visiteur sur cet
-    // appareil, pour ce carnet précis — signet personnel implicite, jamais
-    // partagé (comme myCreations), sans action explicite de sa part.
+    // appareil, pour ce carnet précis — mémorisation implicite, jamais
+    // partagée (comme myCreations), sans action explicite de sa part.
     const rawLastVisited = await storageGet('lastVisitedSpread:' + currentNotebookId, false);
     const parsedLastVisited = rawLastVisited ? parseInt(rawLastVisited, 10) : NaN;
     if (!isNaN(parsedLastVisited) && parsedLastVisited >= 1 && parsedLastVisited <= totalSpreads){
@@ -4154,20 +4055,6 @@
     const rawBackCoverEnabled = await storageGet('backCoverEnabled:' + currentNotebookId, true);
     backCoverEnabled = rawBackCoverEnabled === '1';
 
-    const rawBookmark = await storageGet('bookmarkSpread:' + currentNotebookId, true);
-    let parsedBookmark = null;
-    try{ parsedBookmark = rawBookmark ? JSON.parse(rawBookmark) : null; } catch(e){ parsedBookmark = null; }
-    if (parsedBookmark && parsedBookmark.spread >= 1){
-      bookmarkSpread = parsedBookmark.spread;
-      bookmarkSide = parsedBookmark.side === 'right' ? 'right' : 'left';
-      bookmarkRelX = typeof parsedBookmark.relX === 'number' ? parsedBookmark.relX : 0.15;
-      bookmarkRelY = typeof parsedBookmark.relY === 'number' ? parsedBookmark.relY : 0.08;
-      bookmarkColor = parsedBookmark.color || '';
-      bookmarkImage = parsedBookmark.image || '';
-    } else {
-      bookmarkSpread = null;
-      bookmarkImage = '';
-    }
     // On MUTE coverFront/coverBack en place (jamais de réaffectation `coverFront = …`) :
     // setupCoverPageEditor() a capturé une référence stable vers ces objets à
     // l'initialisation ; les remplacer casserait ce lien et les modifications
@@ -4653,7 +4540,7 @@
   const artistPanel = document.getElementById('artistPanel');
   const artistPanelTitle = document.getElementById('artistPanelTitle');
   const artistPanelClose = document.getElementById('artistPanelClose');
-  const PANEL_TITLES = { carnet: 'Carnet', enveloppe: 'Enveloppe', texte: 'Texte', image: 'Image', dessin: 'Dessin', forme: 'Forme', postit: 'Post-it', signet: 'Signet', plus: "Plus d'outils" };
+  const PANEL_TITLES = { carnet: 'Carnet', enveloppe: 'Enveloppe', texte: 'Texte', image: 'Image', dessin: 'Dessin', forme: 'Forme', postit: 'Post-it', plus: "Plus d'outils" };
   let activeDockTool = null;
 
   function openArtistPanel(tool){
@@ -4671,9 +4558,6 @@
     }
     if (tool === 'enveloppe' && typeof refreshEnvelopePanel === 'function'){
       refreshEnvelopePanel();
-    }
-    if (tool === 'signet' && typeof refreshSignetPanel === 'function'){
-      refreshSignetPanel();
     }
   }
   function closeArtistPanel(){
@@ -4788,29 +4672,12 @@
         const blockNextClick = (ce) => { ce.stopPropagation(); ce.preventDefault(); };
         el.addEventListener('click', blockNextClick, { capture:true, once:true });
         moved = false;
-        // orientation selon le bord le plus proche : verticale si posée près
-        // du bord gauche/droit, horizontale si posée près du bord haut/bas
-        const r = el.getBoundingClientRect();
-        const distX = Math.min(r.left, window.innerWidth - r.right);
-        const distY = Math.min(r.top, window.innerHeight - r.bottom);
-        const horizontal = distY < distX;
-        el.classList.toggle('dock-orient-horizontal', horizontal);
-        el.classList.toggle('dock-orient-vertical', !horizontal);
-        // la bascule d'orientation change brutalement les dimensions du dock
-        // (ex: 9 icônes en colonne étroite -> même 9 icônes en ligne large) ;
-        // sans reclamper, le dock peut dépasser du bord de l'écran.
-        const r2 = el.getBoundingClientRect();
-        const nx = Math.min(Math.max(r2.left, 4), window.innerWidth - r2.width - 4);
-        const ny = Math.min(Math.max(r2.top, 4), window.innerHeight - r2.height - 4);
-        el.style.left = nx + 'px';
-        el.style.top = ny + 'px';
       }
     }
     el.addEventListener('pointerup', endDrag);
     el.addEventListener('pointercancel', endDrag);
     return function resetDockPosition(){
       el.style.left = ''; el.style.top = ''; el.style.right = ''; el.style.bottom = ''; el.style.transform = '';
-      el.classList.remove('dock-orient-horizontal', 'dock-orient-vertical');
     };
   }
   const resetArtistDockPos = makeDraggableDock(artistDock);
@@ -5566,7 +5433,6 @@
       const b = blocksCache.find(x => x.id === el.id);
       if (b && b.type === 'image'){
         layoutImageInFrame(b, el);
-        updateWaveBorder(b, el);
       }
     });
   }
@@ -5734,137 +5600,13 @@
 
   // ============ Image : personnalisation du contour (bordure) ============
   // b.borderColor / b.borderWidth (0–20) / b.borderStyle ('solid' | 'dotted'
-  // | 'dashed' | 'wave') décrivent le contour du cadre image. Les trois
-  // premiers styles utilisent la propriété CSS `border` standard, qui gère
-  // nativement les coins. « wave » (vague / fantaisie) n'a pas d'équivalent
-  // CSS natif fiable sur les 4 côtés (border-image 9-slice déforme les
-  // motifs non répétitifs dans les coins) : on dessine donc un contour SVG
-  // dédié, une courbe ondulée qui suit tout le périmètre du cadre, recalculée
-  // à chaque changement de taille.
-  function computeWaveGeometry(borderWidth){
-    const amp = Math.min(10, Math.max(2, borderWidth * 0.6));
-    const wavelength = Math.min(34, Math.max(12, borderWidth * 2.4));
-    return { amp, wavelength };
-  }
-  // avance de s pixels le long du périmètre du rectangle w×h À COINS ARRONDIS
-  // (rayon r, départ milieu du bord haut, sens horaire) ; renvoie le point de
-  // base, la normale sortante, et — pour les segments droits — la distance
-  // au coin le plus proche (pour atténuer progressivement la vague en
-  // approchant l'arc, qui lui reste toujours lisse, sans ondulation).
-  function pointOnRoundedRectPerimeter(s, w, h, r){
-    const topLen = Math.max(0, w - 2 * r);
-    const sideLen = Math.max(0, h - 2 * r);
-    const arcLen = (Math.PI / 2) * r;
-    let rem = s;
-
-    if (rem <= topLen){
-      return { x: r + rem, y: 0, nx: 0, ny: -1, onArc: false, taperDist: Math.min(rem, topLen - rem), segLen: topLen };
-    }
-    rem -= topLen;
-    if (rem <= arcLen){
-      const t = arcLen > 0 ? rem / arcLen : 0;
-      const angle = -Math.PI / 2 + t * (Math.PI / 2);
-      const cx = w - r, cy = r;
-      return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), nx: Math.cos(angle), ny: Math.sin(angle), onArc: true };
-    }
-    rem -= arcLen;
-    if (rem <= sideLen){
-      return { x: w, y: r + rem, nx: 1, ny: 0, onArc: false, taperDist: Math.min(rem, sideLen - rem), segLen: sideLen };
-    }
-    rem -= sideLen;
-    if (rem <= arcLen){
-      const t = arcLen > 0 ? rem / arcLen : 0;
-      const angle = 0 + t * (Math.PI / 2);
-      const cx = w - r, cy = h - r;
-      return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), nx: Math.cos(angle), ny: Math.sin(angle), onArc: true };
-    }
-    rem -= arcLen;
-    if (rem <= topLen){
-      return { x: w - r - rem, y: h, nx: 0, ny: 1, onArc: false, taperDist: Math.min(rem, topLen - rem), segLen: topLen };
-    }
-    rem -= topLen;
-    if (rem <= arcLen){
-      const t = arcLen > 0 ? rem / arcLen : 0;
-      const angle = Math.PI / 2 + t * (Math.PI / 2);
-      const cx = r, cy = h - r;
-      return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), nx: Math.cos(angle), ny: Math.sin(angle), onArc: true };
-    }
-    rem -= arcLen;
-    if (rem <= sideLen){
-      return { x: 0, y: h - r - rem, nx: -1, ny: 0, onArc: false, taperDist: Math.min(rem, sideLen - rem), segLen: sideLen };
-    }
-    rem -= sideLen;
-    const t = arcLen > 0 ? Math.min(1, rem / arcLen) : 0;
-    const angle = Math.PI + t * (Math.PI / 2);
-    const cx = r, cy = r;
-    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), nx: Math.cos(angle), ny: Math.sin(angle), onArc: true };
-  }
-  function buildWavePathD(w, h, amp, wavelength, radius){
-    const r = Math.max(0, Math.min(radius || 0, w / 2, h / 2));
-    const topLen = Math.max(0, w - 2 * r);
-    const sideLen = Math.max(0, h - 2 * r);
-    const perimeter = 2 * topLen + 2 * sideLen + 2 * Math.PI * r;
-    const step = 3; // px entre deux points échantillonnés le long du périmètre
-    const n = Math.max(16, Math.round(perimeter / step));
-    let d = '';
-    for (let i = 0; i <= n; i++){
-      const s = (i / n) * perimeter;
-      const pt = pointOnRoundedRectPerimeter(s, w, h, r);
-      let off = 0;
-      if (!pt.onArc){
-        // la vague s'éteint progressivement en approchant l'arc du coin, pour
-        // que la jonction entre le tracé ondulé et l'arc lisse reste continue
-        const taperLen = Math.min(wavelength * 0.6, pt.segLen / 2);
-        const taper = taperLen > 0 ? Math.min(1, pt.taperDist / taperLen) : 1;
-        off = amp * taper * Math.sin((2 * Math.PI * s) / wavelength);
-      }
-      const px = pt.x + pt.nx * off;
-      const py = pt.y + pt.ny * off;
-      d += (i === 0 ? 'M' : 'L') + px.toFixed(1) + ',' + py.toFixed(1) + ' ';
-    }
-    return d + 'Z';
-  }
-  // (re)dessine ou retire le contour SVG ondulé selon le style courant —
-  // appelée à la création du bloc, après un redimensionnement, et à chaque
-  // changement de couleur/épaisseur/style/arrondi depuis le panneau.
-  function updateWaveBorder(b, el){
-    let svg = el.querySelector('.block-wave-border');
-    if (b.borderStyle !== 'wave' || (b.borderWidth || 0) <= 0){
-      if (svg) svg.remove();
-      return;
-    }
-    const w = el.clientWidth, h = el.clientHeight;
-    if (!w || !h) return;
-    const { amp, wavelength } = computeWaveGeometry(b.borderWidth);
-    const pad = amp + b.borderWidth / 2 + 2;
-    if (!svg){
-      svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'block-wave-border');
-      svg.style.position = 'absolute';
-      svg.style.pointerEvents = 'none';
-      svg.style.overflow = 'visible';
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('fill', 'none');
-      path.setAttribute('stroke-linejoin', 'round');
-      path.setAttribute('stroke-linecap', 'round');
-      svg.appendChild(path);
-      el.appendChild(svg);
-    }
-    svg.style.left = (-pad) + 'px';
-    svg.style.top = (-pad) + 'px';
-    svg.style.width = (w + 2 * pad) + 'px';
-    svg.style.height = (h + 2 * pad) + 'px';
-    svg.setAttribute('viewBox', `${-pad} ${-pad} ${w + 2 * pad} ${h + 2 * pad}`);
-    const path = svg.querySelector('path');
-    path.setAttribute('d', buildWavePathD(w, h, amp, wavelength, b.radius || 0));
-    path.setAttribute('stroke', b.borderColor || '#000000');
-    path.setAttribute('stroke-width', b.borderWidth);
-  }
+  // | 'dashed') décrivent le contour du cadre image, via la propriété CSS
+  // `border` standard, qui gère nativement les coins.
   function applyImageBorder(b, el){
     const width = b.borderWidth || 0;
     const style = b.borderStyle || 'solid';
     const radius = b.radius || 0;
-    if (width <= 0 || style === 'wave'){
+    if (width <= 0){
       el.style.border = 'none';
     } else {
       el.style.borderStyle = style;
@@ -5874,7 +5616,6 @@
     el.style.borderRadius = radius + 'px';
     const mask = el.querySelector('.block-image-mask');
     if (mask) mask.style.borderRadius = radius + 'px';
-    updateWaveBorder(b, el);
   }
   // Regroupe les ajustements consécutifs (curseur d'épaisseur glissé, ou
   // couleur ajustée en direct) en une seule étape d'annulation, comme pour
@@ -6049,14 +5790,6 @@
     if (b.type === 'image'){
       layoutImageInFrame(b, el);
       attachImagePan(b, el);
-      // Le contour "vague" (SVG) a besoin des dimensions réelles du bloc
-      // (el.clientWidth/Height) pour se dessiner ; applyImageBorder() a été
-      // appelé plus haut alors que el n'était pas encore inséré dans le DOM
-      // (dimensions nulles à ce moment-là), donc updateWaveBorder() s'était
-      // arrêté sans rien dessiner. On le relance maintenant que el est réellement
-      // dans la page — sinon le contour vague restait invisible jusqu'au
-      // prochain redimensionnement de fenêtre.
-      updateWaveBorder(b, el);
     }
 
     // ---- accessibilité clavier ----
@@ -6261,7 +5994,6 @@
         // "cover" et le décalage courant pour la nouvelle taille de cadre.
         if (b.type === 'image'){
           layoutImageInFrame(b, el);
-          updateWaveBorder(b, el); // le contour "vague" suit le nouveau périmètre du cadre
         }
       });
       handle.addEventListener('pointerup', async (e) => {
@@ -6758,7 +6490,6 @@
     addPostitBtn.click();
   });
   document.getElementById('plusOpenEnveloppeBtn').addEventListener('click', () => openArtistPanel('enveloppe'));
-  document.getElementById('plusOpenSignetBtn').addEventListener('click', () => openArtistPanel('signet'));
 
   // ============ BARRE PUBLIQUE : Carnet + Post-it (flottante, bas centre) ============
   // Le bouton Post-it réutilise exactement le même déclencheur que le dock
@@ -6771,12 +6502,6 @@
   const publicCarnetDropdown = document.getElementById('publicCarnetDropdown');
 
   publicPostitBtn.addEventListener('click', () => addPostitBtn.click());
-
-  const publicBookmarkBtn = document.getElementById('publicBookmarkBtn');
-  function updatePublicBookmarkVisibility(){
-    publicBookmarkBtn.style.display = (bookmarkSpread != null) ? 'flex' : 'none';
-  }
-  publicBookmarkBtn.addEventListener('click', goToBookmark);
 
   const publicSilentBtn = document.getElementById('publicSilentBtn');
   publicSilentBtn.addEventListener('click', () => {
@@ -7010,7 +6735,7 @@
     document.querySelectorAll('.content-block').forEach(el => el.classList.add('export-hide-ui'));
     try{
       // Capture la zone écran (marges + carnet) plutôt que le seul élément
-      // #book : les post-it et le signet sont en position:fixed sur <body>
+      // #book : les post-it sont en position:fixed sur <body>
       // (hors de #book dans le DOM), donc invisibles à html2canvas si on ne
       // capture que #book — même s'ils apparaissent bien à l'écran.
       const rect = bookScaleWrap.getBoundingClientRect();
@@ -7307,7 +7032,7 @@
 
   // resynchronise les champs du panneau avec l'état courant — appelé à
   // l'ouverture du panneau et après chargement d'un carnet (comme
-  // refreshCoverEditorPanel / refreshSignetPanel).
+  // refreshCoverEditorPanel).
   function refreshEnvelopePanel(){
     envelopeColorInput.value = envelopeConfig.color || DEFAULT_ENVELOPE_COLOR;
     envelopeTextArea.value = envelopeConfig.text || '';
@@ -7551,212 +7276,6 @@
     backCoverToggle.setAttribute('aria-pressed', String(backCoverEnabled));
     backCoverFields.style.display = backCoverEnabled ? 'block' : 'none';
   }
-
-  // ============ MODE ARTISTE : Signet (marque-page façon post-it) ============
-  // bookmarkSpread/bookmarkSide/bookmarkRelX/bookmarkRelY sont déclarés plus
-  // haut avec les autres états du carnet, et chargés/persistés comme
-  // backCoverEnabled — voir loadNotebookData() et deleteCurrentSpread().
-  function persistBookmarkSpread(){
-    const val = bookmarkSpread == null ? '' : JSON.stringify({ spread: bookmarkSpread, side: bookmarkSide, relX: bookmarkRelX, relY: bookmarkRelY, color: bookmarkColor, image: bookmarkImage });
-    return storageSet('bookmarkSpread:' + currentNotebookId, val, true);
-  }
-  // Construit (ou retire) l'étiquette du signet — exactement le même
-  // principe qu'un post-it : élément recréé à chaque rendu de double-page,
-  // positionné via getZoneRect()/fromRelative(), visible uniquement sur la
-  // double-page qu'il marque (et sur le bon côté en mode mobile).
-  function renderBookmarkTag(){
-    const existing = document.getElementById('bookmarkTag');
-    if (existing) existing.remove();
-    if (bookmarkSpread == null || bookmarkSpread !== spread) return;
-    const side = currentVisibleSide(); // null (desktop) = pas de filtre par côté
-    if (side && bookmarkSide !== side) return;
-    const pos = fromRelative(bookmarkSide, bookmarkRelX, bookmarkRelY);
-    const el = document.createElement('div');
-    el.id = 'bookmarkTag';
-    el.className = 'book-ribbon';
-    el.style.left = pos.left + 'px';
-    el.style.top = pos.top + 'px';
-    if (bookmarkColor){
-      el.style.setProperty('--bm-c1', lightenHex(bookmarkColor, 0.3));
-      el.style.setProperty('--bm-c2', bookmarkColor);
-      el.style.setProperty('--bm-c3', darkenHex(bookmarkColor, 0.72));
-    }
-    if (bookmarkImage){
-      el.style.backgroundImage = `url("${bookmarkImage}")`;
-      el.style.backgroundSize = 'cover';
-      el.style.backgroundPosition = 'center';
-    }
-    el.tabIndex = 0;
-    el.setAttribute('role', 'img');
-    el.setAttribute('aria-label', 'Signet de cette double-page — glisser pour repositionner');
-    document.body.appendChild(el);
-    attachBookmarkDrag(el);
-  }
-  // glisser-déposer réservé à l'artiste (le signet est un objet partagé,
-  // pas une création de visiteur comme un post-it) — mêmes bornes de zone
-  // que les post-it (getZoneRect, étendue aux deux marges en mode artiste).
-  function attachBookmarkDrag(el){
-    let dragging = false, offX = 0, offY = 0, zone = null;
-    el.addEventListener('pointerdown', (e) => {
-      dragging = true;
-      uiDragActive = true;
-      el.classList.add('dragging');
-      const rect = el.getBoundingClientRect();
-      offX = e.clientX - rect.left; offY = e.clientY - rect.top;
-      zone = getZoneRect(bookmarkSide);
-      try{ el.setPointerCapture(e.pointerId); } catch(err){}
-      e.preventDefault();
-    });
-    // Sur l'élément (pas `document`) : le signet est reconstruit à chaque
-    // renderSpread(), soit à chaque navigation — des listeners posés sur
-    // `document` s'accumuleraient donc très vite au fil d'une session.
-    el.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      let nx = e.clientX - offX, ny = e.clientY - offY;
-      nx = Math.min(Math.max(nx, zone.left + 4), zone.right - el.offsetWidth - 4);
-      ny = Math.min(Math.max(ny, zone.top + 4), zone.bottom - el.offsetHeight - 4);
-      el.style.left = nx + 'px'; el.style.top = ny + 'px';
-    });
-    el.addEventListener('pointerup', async (e) => {
-      if (!dragging) return;
-      dragging = false;
-      uiDragActive = false;
-      el.classList.remove('dragging');
-      try{ el.releasePointerCapture(e.pointerId); } catch(err){}
-      const rect = el.getBoundingClientRect();
-      const rel = toRelative(bookmarkSide, rect.left, rect.top);
-      bookmarkRelX = rel.relX; bookmarkRelY = rel.relY;
-      await persistBookmarkSpread();
-    });
-  }
-  // saute directement à la double-page marquée — utilisé par le bouton
-  // "Aller à cette page" du panneau Signet.
-  function goToBookmark(){
-    if (animating || bookmarkSpread == null || !isInterior(bookmarkSpread)) return;
-    spread = bookmarkSpread;
-    if (singlePageMode) singlePageSide = bookmarkSide === 'right' ? 'right' : 'left';
-    renderSpread(spread);
-  }
-  const signetStatus = document.getElementById('signetStatus');
-  const signetPlaceHereBtn = document.getElementById('signetPlaceHereBtn');
-  const signetGoToBtn = document.getElementById('signetGoToBtn');
-  const signetRemoveBtn = document.getElementById('signetRemoveBtn');
-  // resynchronise le panneau « Signet » avec bookmarkSpread / la double-page
-  // actuellement affichée — appelé après chaque rendu (renderSpread) et
-  // après chargement d'un carnet, comme refreshCoverEditorPanel().
-  function refreshSignetPanel(){
-    if (typeof updatePublicBookmarkVisibility === 'function') updatePublicBookmarkVisibility();
-    if (!signetStatus) return;
-    signetColorInput.value = bookmarkColor || DEFAULT_BOOKMARK_COLOR;
-    if (bookmarkImage){
-      signetImagePreview.src = bookmarkImage;
-      signetImagePreviewWrap.style.display = 'block';
-    } else {
-      signetImagePreviewWrap.style.display = 'none';
-    }
-    if (bookmarkSpread != null){
-      const nums = pageNumbers(bookmarkSpread);
-      signetStatus.textContent = `Signet placé sur la double-page « ${nums.indicator} ».`;
-      signetGoToBtn.style.display = '';
-      signetRemoveBtn.style.display = '';
-    } else {
-      signetStatus.textContent = 'Aucun signet placé pour l\'instant.';
-      signetGoToBtn.style.display = 'none';
-      signetRemoveBtn.style.display = 'none';
-    }
-    const onInterior = isInterior(spread);
-    signetPlaceHereBtn.disabled = !onInterior;
-    signetPlaceHereBtn.textContent = (onInterior && bookmarkSpread === spread)
-      ? 'Signet déjà ici'
-      : 'Placer le signet sur cette double-page';
-    signetPlaceHereBtn.style.opacity = (onInterior && bookmarkSpread === spread) ? '.55' : '';
-    if (onInterior && bookmarkSpread === spread) signetPlaceHereBtn.disabled = true;
-  }
-  signetPlaceHereBtn.addEventListener('click', async () => {
-    if (!isInterior(spread)) return;
-    pushUndo();
-    bookmarkSpread = spread;
-    bookmarkSide = 'left';
-    bookmarkRelX = 0.15;
-    bookmarkRelY = 0.08;
-    renderBookmarkTag();
-    refreshSignetPanel();
-    await persistBookmarkSpread();
-    showToast('Signet placé sur cette double-page.');
-  });
-  signetGoToBtn.addEventListener('click', goToBookmark);
-  const signetColorInput = document.getElementById('signetColorInput');
-  const signetColorReset = document.getElementById('signetColorReset');
-  const bookmarkColorUndoGate = makeGroupedUndoGate();
-  signetColorInput.addEventListener('input', async () => {
-    bookmarkColorUndoGate.mark();
-    bookmarkColor = signetColorInput.value;
-    renderBookmarkTag();
-    await persistBookmarkSpread();
-  });
-  signetColorInput.addEventListener('change', () => bookmarkColorUndoGate.reset());
-  signetColorReset.addEventListener('click', async () => {
-    pushUndo();
-    bookmarkColorUndoGate.reset();
-    bookmarkColor = '';
-    signetColorInput.value = DEFAULT_BOOKMARK_COLOR;
-    renderBookmarkTag();
-    await persistBookmarkSpread();
-  });
-
-  // ---- image du marque-page (téléversement, URL, retrait) ----
-  const signetImageFile = document.getElementById('signetImageFile');
-  const signetImagePreviewWrap = document.getElementById('signetImagePreviewWrap');
-  const signetImagePreview = document.getElementById('signetImagePreview');
-  const signetImageClear = document.getElementById('signetImageClear');
-  const signetImageInput = document.getElementById('signetImageInput');
-  signetImageFile.addEventListener('change', async () => {
-    const file = signetImageFile.files && signetImageFile.files[0];
-    if (!file) return;
-    try{
-      const dataUrl = await downscaleImageFile(file, 0.85);
-      pushUndo();
-      bookmarkImage = dataUrl;
-      signetImageInput.value = '';
-      signetImageFile.value = '';
-      renderBookmarkTag();
-      refreshSignetPanel();
-      await persistBookmarkSpread();
-      refreshStorageUsage();
-    } catch(e){
-      console.error('Image du marque-page : recompression impossible', e);
-    }
-  });
-  const signetImageUrlUndoGate = makeGroupedUndoGate();
-  signetImageInput.addEventListener('input', async () => {
-    const url = signetImageInput.value.trim();
-    if (!url) return;
-    signetImageUrlUndoGate.mark();
-    bookmarkImage = url;
-    signetImageFile.value = '';
-    signetImagePreviewWrap.style.display = 'none';
-    renderBookmarkTag();
-    await persistBookmarkSpread();
-  });
-  signetImageInput.addEventListener('change', () => signetImageUrlUndoGate.reset());
-  signetImageClear.addEventListener('click', async () => {
-    pushUndo();
-    bookmarkImage = '';
-    signetImageInput.value = '';
-    signetImageFile.value = '';
-    renderBookmarkTag();
-    refreshSignetPanel();
-    await persistBookmarkSpread();
-  });
-
-  signetRemoveBtn.addEventListener('click', async () => {
-    pushUndo();
-    bookmarkSpread = null;
-    renderBookmarkTag();
-    refreshSignetPanel();
-    await persistBookmarkSpread();
-    showToast('Signet retiré.');
-  });
 
   // ---- lien (arme le placement, la saisie se fait dans le panneau « + ») ----
   document.getElementById('linkPlaceBtn').addEventListener('click', () => {
@@ -8153,7 +7672,7 @@
   // distante pourrait écraser — un seul artiste à la fois, donc ce risque
   // n'a pas lieu d'être couru pour un bénéfice qui ne concerne que toi.
   const LIVE_SYNC_KEYS = ['postits', 'blocks', 'drawings', 'totalSpreads', 'backgrounds',
-    'backCoverEnabled', 'bookmarkSpread', 'coverFront', 'coverBack', 'envelopeConfig'];
+    'backCoverEnabled', 'coverFront', 'coverBack', 'envelopeConfig'];
   let liveSyncRefs = [];
   let liveSyncTimer = null;
   function teardownLiveSync(){
