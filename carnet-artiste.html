@@ -1854,6 +1854,20 @@
         <button class="accordion-action" id="exportAllPdfBtn" type="button" style="margin-top:8px;">Exporter tout le carnet (PDF)</button>
         <div class="tool-hint" id="exportHint" aria-live="polite">Capture la double-page actuellement affichée, telle qu'elle apparaît au public.</div>
       </div>
+
+      <button class="accordion-row" data-accordion="acces" type="button">
+        Lien d'accès
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="accordion-body" id="accordionAcces">
+        <div class="tool-hint" style="margin:0 0 10px;">Votre lien secret est l'unique moyen d'entrer en mode artiste. Générez-en un nouveau à tout moment et conservez-le en lieu sûr (gestionnaire de mots de passe) — en cas de perte, il n'existe aucun autre moyen de revenir ici.</div>
+        <button class="accordion-action" id="generateSecretLinkBtn" type="button">Générer un nouveau lien secret</button>
+        <div id="secretLinkResult" style="display:none; margin-top:10px;">
+          <input type="text" id="secretLinkOutput" readonly aria-label="Nouveau lien secret" style="width:100%; border:1px solid rgba(38,35,25,.15); border-radius:8px; padding:8px 9px; font-family:'Inter', sans-serif; font-size:11px; background:#fff; color:var(--ink);">
+          <button class="accordion-action" id="copySecretLinkBtn" type="button" style="margin-top:8px;">Copier le lien</button>
+          <div class="tool-hint" style="margin-top:8px;">⚠️ Ce nouveau lien remplace l'ancien : tout appareil utilisant l'ancien lien/mot de passe devra désormais utiliser celui-ci.</div>
+        </div>
+      </div>
     </div>
 
     <!-- ---- ENVELOPPE (couleur + contenu de la lettre glissée dans la page de garde) ---- -->
@@ -2166,30 +2180,20 @@
 
         <div style="height:1px; background:rgba(38,35,25,.1); margin:14px 0;"></div>
 
-        <div class="plus-field" style="display:flex; align-items:center; justify-content:space-between;">
-          <label id="backCoverToggleLabel" style="margin:0;">Couverture arrière</label>
-          <button type="button" class="mini-toggle" id="backCoverToggle" aria-pressed="false" aria-labelledby="backCoverToggleLabel"></button>
+        <div class="tool-hint" style="margin:0 0 10px;">La couverture arrière reprend automatiquement le titre et la couleur de la couverture avant. Vous pouvez lui donner sa propre image.</div>
+        <div class="plus-field">
+          <label for="coverBackImageFile">Image de couverture (arrière)</label>
+          <input type="file" id="coverBackImageFile" accept="image/*">
+          <div class="image-preview-wrap" id="coverBackImagePreviewWrap" style="display:none;">
+            <img id="coverBackImagePreview" alt="Aperçu">
+            <button type="button" class="accordion-action" id="coverBackImageClear" style="margin-top:8px;">Retirer l'image</button>
+          </div>
         </div>
-
-        <div id="backCoverFields" style="display:none;">
-          <div class="plus-field">
-            <label for="coverBackTitleInput">Titre (couverture arrière)</label>
-            <input type="text" id="coverBackTitleInput" placeholder="" maxlength="80">
-          </div>
-          <div class="plus-field">
-            <label for="coverBackImageFile">Image de couverture</label>
-            <input type="file" id="coverBackImageFile" accept="image/*">
-            <div class="image-preview-wrap" id="coverBackImagePreviewWrap" style="display:none;">
-              <img id="coverBackImagePreview" alt="Aperçu">
-              <button type="button" class="accordion-action" id="coverBackImageClear" style="margin-top:8px;">Retirer l'image</button>
-            </div>
-          </div>
-          <div class="plus-field">
-            <label for="coverBackImageInput">ou URL de l'image</label>
-            <input type="text" id="coverBackImageInput" placeholder="https://…">
-          </div>
-          <button class="accordion-action" id="goToBackCoverBtn" type="button">Voir la couverture arrière</button>
+        <div class="plus-field">
+          <label for="coverBackImageInput">ou URL de l'image</label>
+          <input type="text" id="coverBackImageInput" placeholder="https://…">
         </div>
+        <button class="accordion-action" id="goToBackCoverBtn" type="button">Voir la couverture arrière</button>
       </div>
     </div>
 
@@ -2635,11 +2639,10 @@
       postits: JSON.stringify(postitsCache),
       drawings: JSON.stringify(drawingsCache),
       // Élargi pour couvrir tout ce que le panneau « + » modifie et qui
-      // n'était pas suivi jusqu'ici : couverture avant/arrière, activation
-      // de la couverture arrière, fond du site, enveloppe.
+      // n'était pas suivi jusqu'ici : couverture avant/arrière, fond du
+      // site, enveloppe.
       coverFront: JSON.stringify(coverFront),
       coverBack: JSON.stringify(coverBack),
-      backCoverEnabled: backCoverEnabled,
       backgrounds: JSON.stringify(backgroundsCache),
       envelope: JSON.stringify(envelopeConfig)
     };
@@ -2655,7 +2658,6 @@
     // loadNotebookData()).
     Object.assign(coverFront, JSON.parse(snap.coverFront));
     Object.assign(coverBack, JSON.parse(snap.coverBack));
-    backCoverEnabled = snap.backCoverEnabled;
     backgroundsCache = JSON.parse(snap.backgrounds); // jamais référencé ailleurs par identité stable : réaffectation directe déjà pratiquée partout ailleurs dans le code
     Object.assign(envelopeConfig, JSON.parse(snap.envelope));
   }
@@ -2686,7 +2688,6 @@
       storageSet('drawings:' + currentNotebookId, JSON.stringify(drawingsCache), true),
       persistCoverFront(),
       persistCoverBack(),
-      persistBackCoverEnabled(),
       persistBackgrounds(),
       persistEnvelopeConfig()
     ]);
@@ -2819,12 +2820,13 @@
 
   // spread = 0  -> couverture avant (livre fermé)
   // spread 1..totalSpreads -> doubles-pages intérieures
-  // spread totalSpreads+1 -> couverture arrière (si activée)
+  // spread totalSpreads+1 -> couverture arrière (toujours présente, suit
+  // automatiquement le titre et la couleur de la couverture avant)
   let totalSpreads = 1; // nombre de doubles-pages INTÉRIEURES créées pour le carnet courant (dynamique, persisté)
   let spread = 0;
-  let backCoverEnabled = false;
+  const backCoverEnabled = true;
   let coverFront = { title: "Carnet d'étude", image: '', color: '' };
-  let coverBack = { title: '', image: '', color: '' };
+  let coverBack = { image: '' };
   const DEFAULT_ENVELOPE_COLOR = '#e5d9bf';
   const DEFAULT_ENVELOPE_TEXT = 'Un mot glissé entre les pages…';
   // couleur, texte et image de l'enveloppe de la page de garde — mutée en
@@ -3053,9 +3055,10 @@
     const data = which === 'front' ? coverFront : coverBack;
     const surface = which === 'front' ? coverFrontSurface : coverBackSurface;
     const titleEl = which === 'front' ? coverFrontTitleEl : coverBackTitleEl;
-    titleEl.textContent = data.title || '';
-    // couleur unifiée : la couverture arrière reprend la même couleur que
-    // l'avant (coverFront.color) plutôt qu'un réglage indépendant
+    // titre et couleur unifiés : la couverture arrière reprend toujours le
+    // titre et la couleur de l'avant (coverFront), plutôt que des réglages
+    // indépendants — seule l'image reste propre à chaque couverture.
+    titleEl.textContent = coverFront.title || '';
     surface.style.backgroundColor = coverFront.color || '';
     surface.style.backgroundImage = data.image ? `url("${data.image}")` : '';
   }
@@ -3908,9 +3911,6 @@
     try{ backgroundsCache = rawBackgrounds ? JSON.parse(rawBackgrounds) : {}; }
     catch(e){ backgroundsCache = {}; }
 
-    const rawBackCoverEnabled = await storageGet('backCoverEnabled:' + currentNotebookId, true);
-    backCoverEnabled = rawBackCoverEnabled === '1';
-
     // On MUTE coverFront/coverBack en place (jamais de réaffectation `coverFront = …`) :
     // setupCoverPageEditor() a capturé une référence stable vers ces objets à
     // l'initialisation ; les remplacer casserait ce lien et les modifications
@@ -3924,12 +3924,12 @@
     coverFront.color = parsedFront ? (parsedFront.color || '') : '';
     if (typeof applyCoverColor === 'function') applyCoverColor();
 
+    // La couverture arrière n'a plus que sa propre image : le titre et la
+    // couleur suivent toujours ceux de la couverture avant (coverFront).
     const rawCoverBack = await storageGet('coverBack:' + currentNotebookId, true);
     let parsedBack = null;
     try{ parsedBack = rawCoverBack ? JSON.parse(rawCoverBack) : null; } catch(e){ parsedBack = null; }
-    coverBack.title = parsedBack ? (parsedBack.title || '') : '';
     coverBack.image = parsedBack ? (parsedBack.image || '') : '';
-    // pas de coverBack.color : la couleur est unifiée avec coverFront.color
 
     // Même principe de mutation en place que coverFront/coverBack ci-dessus.
     const rawEnvelope = await storageGet('envelopeConfig:' + currentNotebookId, true);
@@ -3981,6 +3981,47 @@
   }
   document.getElementById('previewModeBtn').addEventListener('click', () => setPreviewMode(true));
   document.getElementById('previewExitBtn').addEventListener('click', () => setPreviewMode(false));
+
+  // ============ MODE ARTISTE : filet minimal — régénérer le lien secret ============
+  // Seul moyen, depuis l'interface, de renouveler l'accès artiste (il n'y a
+  // plus de mot de passe géré manuellement ni de bouton public/artiste — voir
+  // tryMagicLinkUnlock). Génère un secret aléatoire, l'utilise immédiatement
+  // comme nouveau mot de passe partagé (même mécanisme que la première
+  // activation via lien secret), garde CET appareil déverrouillé avec, et
+  // affiche le lien complet à copier. Le secret en clair n'est jamais
+  // stocké : uniquement affiché une fois, en mémoire, le temps de la session.
+  function generateRandomSecret(){
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  const generateSecretLinkBtn = document.getElementById('generateSecretLinkBtn');
+  const secretLinkResult = document.getElementById('secretLinkResult');
+  const secretLinkOutput = document.getElementById('secretLinkOutput');
+  const copySecretLinkBtn = document.getElementById('copySecretLinkBtn');
+  generateSecretLinkBtn?.addEventListener('click', async () => {
+    const secret = generateRandomSecret();
+    const hash = await sha256Hex(secret);
+    await storageSet('artistPasswordHash', hash, true);
+    storeDeviceToken(hash); // garde cet appareil déverrouillé avec le nouveau secret
+    secretLinkOutput.value = location.origin + location.pathname + '#artist=' + encodeURIComponent(secret);
+    secretLinkResult.style.display = 'block';
+    showToast('Nouveau lien généré — copiez-le et conservez-le en lieu sûr.');
+  });
+  copySecretLinkBtn?.addEventListener('click', async () => {
+    try{
+      await navigator.clipboard.writeText(secretLinkOutput.value);
+      showToast('Lien copié dans le presse-papiers.');
+    } catch(e){
+      try{
+        secretLinkOutput.select();
+        document.execCommand('copy');
+        showToast('Lien copié dans le presse-papiers.');
+      } catch(e2){
+        showToast('Copie automatique indisponible — sélectionnez le texte et copiez-le manuellement.', true);
+      }
+    }
+  });
 
   function setArtistMode(on){
     artistMode = on;
@@ -6745,11 +6786,13 @@
   // page de couverture, navigable, qui s'affiche seule livre fermé.
   function persistCoverFront(){ return storageSet('coverFront:' + currentNotebookId, JSON.stringify(coverFront), true); }
   function persistCoverBack(){ return storageSet('coverBack:' + currentNotebookId, JSON.stringify(coverBack), true); }
-  function persistBackCoverEnabled(){ return storageSet('backCoverEnabled:' + currentNotebookId, backCoverEnabled ? '1' : '0', true); }
 
   function setupCoverPageEditor(which){
     const data = which === 'front' ? coverFront : coverBack;
-    const titleInput = document.getElementById(`cover${which === 'front' ? 'Front' : 'Back'}TitleInput`);
+    // Le champ de titre n'existe (en HTML) que pour la couverture avant :
+    // le titre de la couverture arrière suit désormais toujours celui de
+    // l'avant (voir renderCoverSurface), plus de réglage indépendant.
+    const titleInput = which === 'front' ? document.getElementById('coverFrontTitleInput') : null;
     const colorInput = document.getElementById(`cover${which === 'front' ? 'Front' : 'Back'}ColorInput`);
     const colorReset = document.getElementById(`cover${which === 'front' ? 'Front' : 'Back'}ColorReset`);
     const imageFile = document.getElementById(`cover${which === 'front' ? 'Front' : 'Back'}ImageFile`);
@@ -6780,7 +6823,7 @@
       if (!coverEditUndoPending){ pushUndo(); coverEditUndoPending = true; }
     }
 
-    titleInput.addEventListener('input', () => {
+    titleInput?.addEventListener('input', () => {
       data.title = titleInput.value;
       persist();
     });
@@ -6859,22 +6902,11 @@
   const coverFrontEditor = setupCoverPageEditor('front');
   const coverBackEditor = setupCoverPageEditor('back');
 
-  const backCoverToggle = document.getElementById('backCoverToggle');
-  const backCoverFields = document.getElementById('backCoverFields');
-  backCoverToggle.addEventListener('click', async () => {
-    pushUndo();
-    backCoverEnabled = !backCoverEnabled;
-    backCoverToggle.classList.toggle('on', backCoverEnabled);
-    backCoverToggle.setAttribute('aria-pressed', String(backCoverEnabled));
-    backCoverFields.style.display = backCoverEnabled ? 'block' : 'none';
-    await persistBackCoverEnabled();
-    updateNavButtons();
-  });
-
   // resynchronise les champs du panneau avec l'état courant (coverFront /
-  // coverBack / backCoverEnabled) — appelé après chaque rendu et après le
-  // chargement d'un carnet, pour ne jamais afficher des valeurs obsolètes
-  // d'un précédent carnet.
+  // coverBack) — appelé après chaque rendu et après le chargement d'un
+  // carnet, pour ne jamais afficher des valeurs obsolètes d'un précédent
+  // carnet. La couverture arrière suit toujours le titre de l'avant : pas
+  // de champ à resynchroniser de son côté.
   function refreshCoverEditorPanel(){
     coverFrontEditor.titleInput.value = coverFront.title || '';
     coverFrontEditor.colorInput.value = coverFront.color || DEFAULT_COVER;
@@ -6882,14 +6914,10 @@
       coverFrontEditor.imagePreview.src = coverFront.image;
       coverFrontEditor.imagePreviewWrap.style.display = coverFront.image.startsWith('data:') ? 'block' : 'none';
     }
-    coverBackEditor.titleInput.value = coverBack.title || '';
     if (coverBack.image && !coverBackEditor.imageFile.files.length){
       coverBackEditor.imagePreview.src = coverBack.image;
       coverBackEditor.imagePreviewWrap.style.display = coverBack.image.startsWith('data:') ? 'block' : 'none';
     }
-    backCoverToggle.classList.toggle('on', backCoverEnabled);
-    backCoverToggle.setAttribute('aria-pressed', String(backCoverEnabled));
-    backCoverFields.style.display = backCoverEnabled ? 'block' : 'none';
   }
 
   // ---- lien (arme le placement, la saisie se fait dans le panneau « + ») ----
@@ -7287,7 +7315,7 @@
   // distante pourrait écraser — un seul artiste à la fois, donc ce risque
   // n'a pas lieu d'être couru pour un bénéfice qui ne concerne que toi.
   const LIVE_SYNC_KEYS = ['postits', 'blocks', 'drawings', 'totalSpreads', 'backgrounds',
-    'backCoverEnabled', 'coverFront', 'coverBack', 'envelopeConfig'];
+    'coverFront', 'coverBack', 'envelopeConfig'];
   let liveSyncRefs = [];
   let liveSyncTimer = null;
   function teardownLiveSync(){
