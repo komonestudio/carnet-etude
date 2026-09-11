@@ -1690,6 +1690,7 @@
     .content-block .block-delete{ width:26px; height:26px; }
     .content-block .block-crop{ width:26px; height:26px; }
     .content-block .block-rotate{ width:26px; height:26px; top:-40px; }
+    .content-block .block-lock{ width:26px; height:26px; left:-13px; }
 
     /* la page étant plus étroite sur petit écran (--page-vw), on resserre
        ses marges internes pour garder assez de place au contenu */
@@ -5064,14 +5065,20 @@
     return pageWidthPx / 420; // 420 = largeur de référence desktop (moitié de .book, 840/2)
   }
   function styleTextEl(txt, b){
-    txt.style.fontSize = (b.fontSize * getTextScaleFactor()) + 'pt';
+    const scale = getTextScaleFactor();
+    txt.style.fontSize = (b.fontSize * scale) + 'pt';
     txt.style.fontFamily = b.fontFamily;
     txt.style.color = b.color;
     txt.style.textAlign = b.align;
     txt.style.textAlignLast = b.align === 'justify' ? 'left' : '';
     txt.style.lineHeight = b.lineHeight;
-    txt.style.letterSpacing = b.letterSpacing + 'px';
-    txt.style.padding = '8px';
+    // letterSpacing et padding mis à l'échelle comme fontSize : ce sont des
+    // pixels FIXES, donc sans ce facteur ils grignotent une part bien plus
+    // grande du cadre sur un petit écran mobile (débordement) tout en étant
+    // négligeables sur desktop (grand cadre) — d'où un rendu qui semblait
+    // correct dans un sens (mobile → desktop) mais pas dans l'autre.
+    txt.style.letterSpacing = (b.letterSpacing * scale) + 'px';
+    txt.style.padding = (8 * scale) + 'px';
     txt.style.fontWeight = b.bold ? '700' : '400';
     txt.style.fontStyle = b.italic ? 'italic' : 'normal';
     txt.style.textDecoration = b.underline ? 'underline' : 'none';
@@ -5291,16 +5298,6 @@
     }
     img.addEventListener('pointerup', endPan);
     img.addEventListener('pointercancel', endPan);
-    // molette : zoom rapide sans passer par le curseur du panneau
-    img.addEventListener('wheel', (e) => {
-      if (!artistMode || !el.classList.contains('cropping')) return;
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.06 : 0.06;
-      b.imgScale = Math.min(4, Math.max(1, (b.imgScale || 1) + delta));
-      layoutImageInFrame(b, el);
-      updateCropToolbarSlider();
-      schedulePersistCropChange();
-    }, { passive: false });
   }
 
   // ---- panneau flottant de recadrage (zoom, réinitialiser, terminé) ----
@@ -5324,7 +5321,7 @@
         <button type="button" id="cropResetBtn">Réinitialiser</button>
         <button type="button" id="cropDoneBtn" class="crop-done">Terminé</button>
       </div>
-      <div class="crop-toolbar__hint">Glissez l'image dans le cadre pour la repositionner ; molette ou curseur pour zoomer.</div>
+      <div class="crop-toolbar__hint">Glissez l'image dans le cadre pour la repositionner ; curseur pour zoomer.</div>
     `;
     document.body.appendChild(el);
     el.querySelector('#cropZoomRange').addEventListener('input', (e) => {
@@ -5715,7 +5712,7 @@
     el.addEventListener('pointerdown', (e) => {
       if (!artistMode) return;
       if (b.locked) return;
-      if (e.target.closest('.block-resize') || e.target.closest('.block-delete') || e.target.closest('.block-crop') || e.target.closest('.block-rotate')) return;
+      if (e.target.closest('.block-resize') || e.target.closest('.block-delete') || e.target.closest('.block-crop') || e.target.closest('.block-rotate') || e.target.closest('.block-lock')) return;
       if (textEl && textEl.isContentEditable) return;
       if (el.classList.contains('cropping')) return; // en recadrage, le glisser déplace l'image dans son cadre, pas le cadre lui-même
       pushUndo();
