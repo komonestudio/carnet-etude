@@ -845,8 +845,8 @@
   }
   .tools-dock .zoom-float-btn:hover{ background: rgba(38,35,25,.08); transform:none; }
   .tools-dock .zoom-float-btn.active{ color: var(--esprit); background: rgba(65,82,107,.14); }
-  body.dark-mode .tools-dock .zoom-float-btn:hover{ background: rgba(255,255,255,.1); }
-  body.dark-mode .tools-dock .zoom-float-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
+  body.dark-mode .tools-dock .zoom-float-btn:hover{ background: #F4F5F5; color: #42484C; }
+  body.dark-mode .tools-dock .zoom-float-btn.active{ color:#42484C; background: #F4F5F5; }
   .tools-dock .zoom-float-btn svg{ width:18px; height:18px; color:currentColor; }
   .zoom-float-panel{
     position:fixed; top:100px; left:16px; z-index:55;
@@ -888,8 +888,8 @@
   .public-toolbar .dock-btn svg{ width:18px; height:18px; }
   .public-toolbar .dock-btn:hover{ background: rgba(38,35,25,.08); }
   .public-toolbar .dock-btn.active{ color: var(--esprit); background: rgba(65,82,107,.14); }
-  body.dark-mode .public-toolbar .dock-btn:hover{ background: rgba(255,255,255,.1); }
-  body.dark-mode .public-toolbar .dock-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
+  body.dark-mode .public-toolbar .dock-btn:hover{ background: #F4F5F5; color: #42484C; }
+  body.dark-mode .public-toolbar .dock-btn.active{ color:#42484C; background: #F4F5F5; }
 
   .public-carnet-dropdown{
     position:fixed; top:50%; right:92px; transform:translateY(-50%);
@@ -936,10 +936,10 @@
   /* mode sombre : mêmes teintes, un cran plus sourdes — un post-it garde sa
      couleur d'origine, mais paraît moins « lumineux » dans une pièce sombre,
      plutôt qu'un jeu de couleurs entièrement inversé/artificiel */
-  body.dark-mode .postit[data-color="yellow"]{ background:#c9ad4a; }
-  body.dark-mode .postit[data-color="pink"]{ background:#c98a95; }
-  body.dark-mode .postit[data-color="blue"]{ background:#6f93b8; }
-  body.dark-mode .postit[data-color="green"]{ background:#82a873; }
+  body.dark-mode .postit[data-color="yellow"]{ background:#C9A227; }
+  body.dark-mode .postit[data-color="pink"]{ background:#E95D87; }
+  body.dark-mode .postit[data-color="blue"]{ background:#3A5DF8; }
+  body.dark-mode .postit[data-color="green"]{ background:#2D8F00; }
   .postit{ transform: rotate(var(--postit-rot, 0deg)); }
   @keyframes postitPop{
     0%{ opacity:0; transform: rotate(var(--postit-rot,0deg)) scale(.85) translateY(10px); }
@@ -1104,13 +1104,14 @@
      donc tout ce qui utilise déjà var(--paper)/var(--ink)/etc. bascule
      automatiquement (page, texte, marges) sans dupliquer chaque règle ---- */
   body.dark-mode{
-    --margin-1:#232323; --margin-2:#0e0e0e;
-    --paper:#1c1f21; --paper-2:#26292b;
-    --ink:#f0efe9; --ink-soft:#a9a49b;
-    --card-bg: rgba(30,30,30,.88); --card-border: rgba(255,255,255,.14);
+    --margin-1:#0E1011; --margin-2:#090A0B;
+    --paper:#262A2C; --paper-2:#1C1F21;
+    --ink:#F4F5F5; --ink-soft:#D3D7D9;
+    --card-bg: #262A2C; --card-border: #F4F5F5;
     --highlight-color: rgba(201,173,74,.5);
+    --esprit: #072AC5;
   }
-  #darkModeBtn.active{ background: linear-gradient(155deg, #2f3c50, var(--esprit)); color:#fff; }
+  #darkModeBtn.active{ background: linear-gradient(155deg, #06229D, var(--esprit)); color:#F4F5F5; }
 
   /* ---- mode sombre : contraste des éléments de page qui ne suivent pas
      var(--ink) (couleurs fixes conçues pour une page claire, illisibles sur
@@ -1119,13 +1120,13 @@
      page vierge. ---- */
   body.dark-mode .spine::after{
     background-image:
-      repeating-linear-gradient(115deg, rgba(211,215,217,.55) 0 2px, transparent 2px 13px),
-      repeating-linear-gradient(65deg, rgba(211,215,217,.55) 0 2px, transparent 2px 13px);
+      repeating-linear-gradient(115deg, #D3D7D9 0 2px, transparent 2px 13px),
+      repeating-linear-gradient(65deg, #D3D7D9 0 2px, transparent 2px 13px);
   }
-  body.dark-mode .spine svg line{ stroke: #d3d7d9; }
-  body.dark-mode .page-number{ color: rgba(211,215,217,.55); }
-  body.dark-mode .page-watermark{ color: rgba(211,215,217,.4); }
-  body.dark-mode .blank-hint{ color: rgba(211,215,217,.32); }
+  body.dark-mode .spine svg line{ stroke: #D3D7D9; }
+  body.dark-mode .page-number{ color: #D3D7D9; }
+  body.dark-mode .page-watermark{ color: #D3D7D9; }
+  body.dark-mode .blank-hint{ color: #D3D7D9; }
 
   /* ---- chrome flottant (pastilles/panneaux en « verre » translucide) :
      conçu à l'origine pour un fond clair (background blanc translucide,
@@ -1149,11 +1150,11 @@
   body.dark-mode .crop-toolbar,
   body.dark-mode .new-notebook-modal__card{
     background: rgba(66,72,76,.88);
-    border-color: rgba(255,255,255,.18);
+    border-color: #F4F5F5;
   }
-  body.dark-mode .page-nav__arrow:hover{ background: rgba(86,92,96,.95); }
-  body.dark-mode .notebook-selector:hover{ background: rgba(86,92,96,.95); }
-  body.dark-mode .layer-toolbar button:hover{ background: rgba(255,255,255,.1); }
+  body.dark-mode .page-nav__arrow:hover{ background: #656D72; }
+  body.dark-mode .notebook-selector:hover{ background: #656D72; }
+  body.dark-mode .layer-toolbar button:hover{ background: #F4F5F5; color: #42484C; }
   /* ---- champs et boutons de paramètre (panneaux d'outils) : fond clair
      #D3D7D9 / texte sombre #42484C pour un contraste fort et lisible sur le
      fond du panneau (#42484C translucide) — remplace les fonds blancs ou
@@ -1166,20 +1167,20 @@
   body.dark-mode .tool-section select,
   body.dark-mode .new-notebook-modal__card input,
   body.dark-mode #secretLinkOutput{
-    background: #D3D7D9 !important; color: #42484C !important; border-color: rgba(255,255,255,.18);
+    background: #D3D7D9 !important; color: #42484C !important; border-color: #D3D7D9;
   }
   body.dark-mode .tool-btn{
-    background: #D3D7D9; color: #42484C; border-color: rgba(255,255,255,.18);
+    background: #D3D7D9; color: #42484C; border-color: #D3D7D9;
   }
-  body.dark-mode .tool-btn:hover{ background: #c3c9cc; }
+  body.dark-mode .tool-btn:hover{ background: #879197; }
   /* ---- paramètre sélectionné (alignement, mise en forme, forme, outil de
-     dessin, onglet enveloppe…) : bleu franc, texte blanc, pour distinguer
-     clairement l'état actif du reste des boutons clairs ci-dessus. ---- */
-  body.dark-mode .tool-btn.selected{
-    background: #0626B1; border-color: #0626B1; color: #fff;
-  }
-  body.dark-mode .accordion-action{ border-color: rgba(255,255,255,.2); color: var(--ink-soft); }
-  body.dark-mode .nnm-cancel{ background: rgba(255,255,255,.1); }
+     dessin, onglet enveloppe…) : la règle de base (mode clair) utilise déjà
+     var(--esprit) pour le fond/la bordure — redéfini en #072AC5 dans les
+     variables du mode sombre ci-dessus, donc rien à répéter ici à part le
+     texte (blanc légèrement teinté au lieu du blanc pur du mode clair). ---- */
+  body.dark-mode .tool-btn.selected{ color: #F4F5F5; }
+  body.dark-mode .accordion-action{ border-color: #D3D7D9; color: var(--ink-soft); }
+  body.dark-mode .nnm-cancel{ background: #D3D7D9; color: #42484C; }
 
   /* ---- barre de calques (ordre d'empilement du bloc sélectionné) ---- */
   .layer-toolbar{
@@ -1250,8 +1251,8 @@
   .dock-btn svg{ width:18px; height:18px; }
   .dock-btn:hover{ background: rgba(38,35,25,.08); }
   .dock-btn.active{ color: var(--esprit); background: rgba(65,82,107,.14); }
-  body.dark-mode .dock-btn:hover{ background: rgba(255,255,255,.1); }
-  body.dark-mode .dock-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
+  body.dark-mode .dock-btn:hover{ background: #F4F5F5; color: #42484C; }
+  body.dark-mode .dock-btn.active{ color:#42484C; background: #F4F5F5; }
   .dock-btn--plus{
     width:52px; height:52px; margin:2px 0;
     background: var(--esprit); color:#fff;
@@ -1810,7 +1811,7 @@
     .zoom-float-btn[data-tooltip]::after{ left:calc(100% + 14px); }
     body.dark-mode .public-toolbar .dock-btn[data-tooltip]::after,
     body.dark-mode .zoom-float-btn[data-tooltip]::after{
-      color: rgba(240,239,233,.6);
+      color: #D3D7D9;
     }
     .public-toolbar .dock-btn[data-tooltip]:hover::after,
     .zoom-float-btn[data-tooltip]:hover::after{ opacity:1; }
