@@ -1154,11 +1154,29 @@
   body.dark-mode .page-nav__arrow:hover{ background: rgba(86,92,96,.95); }
   body.dark-mode .notebook-selector:hover{ background: rgba(86,92,96,.95); }
   body.dark-mode .layer-toolbar button:hover{ background: rgba(255,255,255,.1); }
+  /* ---- champs et boutons de paramètre (panneaux d'outils) : fond clair
+     #D3D7D9 / texte sombre #42484C pour un contraste fort et lisible sur le
+     fond du panneau (#42484C translucide) — remplace les fonds blancs ou
+     translucides trop pâles hérités du mode clair. ---- */
   body.dark-mode .postit-panel input,
   body.dark-mode .postit-panel textarea,
+  body.dark-mode .plus-field input[type="text"],
+  body.dark-mode .tool-section input[type="number"],
   body.dark-mode .artist-panel select,
-  body.dark-mode .new-notebook-modal__card input{
-    background: rgba(255,255,255,.07); color: var(--ink); border-color: rgba(255,255,255,.18);
+  body.dark-mode .tool-section select,
+  body.dark-mode .new-notebook-modal__card input,
+  body.dark-mode #secretLinkOutput{
+    background: #D3D7D9 !important; color: #42484C !important; border-color: rgba(255,255,255,.18);
+  }
+  body.dark-mode .tool-btn{
+    background: #D3D7D9; color: #42484C; border-color: rgba(255,255,255,.18);
+  }
+  body.dark-mode .tool-btn:hover{ background: #c3c9cc; }
+  /* ---- paramètre sélectionné (alignement, mise en forme, forme, outil de
+     dessin, onglet enveloppe…) : bleu franc, texte blanc, pour distinguer
+     clairement l'état actif du reste des boutons clairs ci-dessus. ---- */
+  body.dark-mode .tool-btn.selected{
+    background: #0626B1; border-color: #0626B1; color: #fff;
   }
   body.dark-mode .accordion-action{ border-color: rgba(255,255,255,.2); color: var(--ink-soft); }
   body.dark-mode .nnm-cancel{ background: rgba(255,255,255,.1); }
@@ -2038,7 +2056,7 @@
         </button>
       </div>
 
-      <div class="tool-hint">Sélectionnez un bloc existant pour modifier son style en direct, ou créez-en un nouveau. Double-cliquez sur une poignée de redimensionnement pour ajuster automatiquement la hauteur du cadre à son contenu. Astuce : Ctrl+D duplique le bloc (texte, image, forme…) actuellement sélectionné sur la même page ; Ctrl+C puis Ctrl+V le copie vers n'importe quelle autre page.</div>
+      <div class="tool-hint">Sélectionnez un bloc existant pour modifier son style en direct, ou créez-en un nouveau. Double-cliquez sur une poignée de redimensionnement pour ajuster automatiquement la hauteur du cadre à son contenu. Maintenez Maj en redimensionnant pour conserver ses proportions. Astuce : Ctrl+D duplique le bloc (texte, image, forme…) actuellement sélectionné sur la même page ; Ctrl+C puis Ctrl+V le copie vers n'importe quelle autre page.</div>
 
       <button class="accordion-row" data-accordion="lien" type="button">
         Lien
@@ -5775,7 +5793,7 @@
     // simplement de la position de l'ancre et de celle du pointeur.
     const MIN_W = 0.08, MIN_H = 0.06;
     Object.entries(resizeHandles).forEach(([corner, handle]) => {
-      let resizing = false, anchorX = 0, anchorY = 0;
+      let resizing = false, anchorX = 0, anchorY = 0, startAspect = 1;
       handle.addEventListener('pointerdown', (e) => {
         if (!artistMode || b.locked) return;
         pushUndo();
@@ -5783,6 +5801,11 @@
         uiDragActive = true;
         anchorX = (corner === 'tl' || corner === 'bl') ? (b.relX + b.relW) : b.relX;
         anchorY = (corner === 'tl' || corner === 'tr') ? (b.relY + b.relH) : b.relY;
+        // ratio largeur/hauteur du cadre au début du geste, en pixels réels
+        // (la page n'étant pas carrée, un ratio calculé directement sur
+        // relW/relH serait faux) — sert de référence si Maj est maintenu.
+        const pr = pageEl.getBoundingClientRect();
+        startAspect = (b.relW * pr.width) / (b.relH * pr.height || 1) || 1;
         try{ handle.setPointerCapture(e.pointerId); } catch(err){}
         e.preventDefault(); e.stopPropagation();
       });
@@ -5791,6 +5814,18 @@
         const pageRect = pageEl.getBoundingClientRect();
         let px = Math.min(Math.max((e.clientX - pageRect.left) / pageRect.width, 0), 1);
         let py = Math.min(Math.max((e.clientY - pageRect.top) / pageRect.height, 0), 1);
+        // Maj maintenu : conserve le ratio largeur/hauteur d'origine du
+        // cadre au lieu de suivre librement le pointeur — évite de
+        // l'étirer/l'écraser par accident (utile surtout pour les images,
+        // dont le cadrage "cover" se resserre différemment selon la forme
+        // du cadre, mais fonctionne pour tout type de bloc).
+        if (e.shiftKey){
+          let wPx = Math.abs(px - anchorX) * pageRect.width;
+          let hPx = Math.abs(py - anchorY) * pageRect.height;
+          if (wPx / startAspect >= hPx) hPx = wPx / startAspect; else wPx = hPx * startAspect;
+          px = Math.min(Math.max(anchorX + (px < anchorX ? -wPx : wPx) / pageRect.width, 0), 1);
+          py = Math.min(Math.max(anchorY + (py < anchorY ? -hPx : hPx) / pageRect.height, 0), 1);
+        }
         // impose une taille minimale en limitant la distance à l'ancre,
         // dans la bonne direction selon de quel côté on tire
         if (Math.abs(px - anchorX) < MIN_W) px = anchorX + MIN_W * (px < anchorX ? -1 : 1);
