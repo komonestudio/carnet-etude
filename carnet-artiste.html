@@ -940,6 +940,12 @@
   body.dark-mode .postit[data-color="pink"]{ background:#E95D87; }
   body.dark-mode .postit[data-color="blue"]{ background:#3A5DF8; }
   body.dark-mode .postit[data-color="green"]{ background:#2D8F00; }
+  /* texte, nom/pseudo et icônes du post-it hérités de cette couleur de base
+     (#2a2413, sombre) : illisible sur les teintes assombries ci-dessus, donc
+     basculé en blanc en mode sombre plutôt que dupliqué sur chaque enfant. */
+  body.dark-mode .postit{ color:#F4F5F5; }
+  body.dark-mode .postit .postit-footer{ color: rgba(244,245,245,.75); }
+  body.dark-mode .postit .postit-icon-btn{ color:#F4F5F5; }
   .postit{ transform: rotate(var(--postit-rot, 0deg)); }
   @keyframes postitPop{
     0%{ opacity:0; transform: rotate(var(--postit-rot,0deg)) scale(.85) translateY(10px); }
@@ -1150,7 +1156,7 @@
   body.dark-mode .crop-toolbar,
   body.dark-mode .new-notebook-modal__card{
     background: rgba(66,72,76,.88);
-    border-color: #F4F5F5;
+    border-color: rgba(244,245,245,.18);
   }
   body.dark-mode .page-nav__arrow:hover{ background: #656D72; }
   body.dark-mode .notebook-selector:hover{ background: #656D72; }
@@ -1167,10 +1173,10 @@
   body.dark-mode .tool-section select,
   body.dark-mode .new-notebook-modal__card input,
   body.dark-mode #secretLinkOutput{
-    background: #D3D7D9 !important; color: #42484C !important; border-color: #D3D7D9;
+    background: #D3D7D9 !important; color: #42484C !important; border-color: rgba(211,215,217,.3);
   }
   body.dark-mode .tool-btn{
-    background: #D3D7D9; color: #42484C; border-color: #D3D7D9;
+    background: #D3D7D9; color: #42484C; border-color: rgba(211,215,217,.3);
   }
   body.dark-mode .tool-btn:hover{ background: #879197; }
   /* ---- paramètre sélectionné (alignement, mise en forme, forme, outil de
@@ -1179,7 +1185,7 @@
      variables du mode sombre ci-dessus, donc rien à répéter ici à part le
      texte (blanc légèrement teinté au lieu du blanc pur du mode clair). ---- */
   body.dark-mode .tool-btn.selected{ color: #F4F5F5; }
-  body.dark-mode .accordion-action{ border-color: #D3D7D9; color: var(--ink-soft); }
+  body.dark-mode .accordion-action{ border-color: rgba(211,215,217,.3); color: var(--ink-soft); }
   body.dark-mode .nnm-cancel{ background: #D3D7D9; color: #42484C; }
 
   /* ---- barre de calques (ordre d'empilement du bloc sélectionné) ---- */
@@ -5092,11 +5098,29 @@
     const pageWidthPx = pageLeft.getBoundingClientRect().width || 420;
     return pageWidthPx / 420; // 420 = largeur de référence desktop (moitié de .book, 840/2)
   }
+  // La couleur d'un bloc de texte est choisie par l'artiste et stockée telle
+  // quelle (pas une variable CSS comme --ink) : sans ce correctif, un texte
+  // écrit en noir (ou toute teinte sombre) reste noir sur une page devenue
+  // sombre, donc invisible. En mode sombre, on bascule automatiquement vers
+  // du blanc toute couleur suffisamment foncée (luminance perçue faible) ;
+  // les couleurs déjà claires ou vives choisies par l'artiste sont conservées
+  // telles quelles.
+  function isColorDark(hex){
+    try{
+      const { r, g, b } = hexToRgb(hex);
+      // formule de luminance perçue (poids standard ITU-R BT.601)
+      return (r * 0.299 + g * 0.587 + b * 0.114) < 90;
+    } catch(e){ return false; }
+  }
+  function effectiveTextColor(b){
+    if (document.body.classList.contains('dark-mode') && isColorDark(b.color)) return '#F4F5F5';
+    return b.color;
+  }
   function styleTextEl(txt, b){
     const scale = getTextScaleFactor();
     txt.style.fontSize = (b.fontSize * scale) + 'pt';
     txt.style.fontFamily = b.fontFamily;
-    txt.style.color = b.color;
+    txt.style.color = effectiveTextColor(b);
     txt.style.textAlign = b.align;
     txt.style.textAlignLast = b.align === 'justify' ? 'left' : '';
     txt.style.lineHeight = b.lineHeight;
@@ -6211,6 +6235,15 @@
     document.body.classList.toggle('dark-mode', on);
     darkModeBtn.classList.toggle('active', on);
     darkModeBtn.setAttribute('aria-pressed', String(on));
+    // réapplique la couleur effective (noir → blanc ou inverse) des blocs de
+    // texte déjà affichés, sans attendre une prochaine sélection/édition
+    document.querySelectorAll('.content-block').forEach(el => {
+      const b = blocksCache.find(x => x.id === el.id);
+      if (b && b.type === 'text'){
+        const txt = el.querySelector('.block-text');
+        if (txt) styleTextEl(txt, b);
+      }
+    });
   }
   darkModeBtn.addEventListener('click', async () => {
     const on = !document.body.classList.contains('dark-mode');
