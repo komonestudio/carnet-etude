@@ -774,7 +774,11 @@
     position:absolute; inset:6px;
     border:1.5px dashed rgba(65,82,107,.35);
     border-radius:14px;
+    background: rgba(255,255,255,.25);
     pointer-events:none;
+  }
+  body.dark-mode .margin-zone.placing-target::before{
+    background: rgba(66,72,76,.25);
   }
   /* en mode « une page à la fois », une seule marge est visible : celle du
      côté extérieur de la page actuellement lue. L'autre n'est pas masquée
@@ -1161,7 +1165,7 @@
   body.dark-mode .page-nav__arrow:hover{ background: #656D72; }
   body.dark-mode .notebook-selector:hover{ background: #656D72; }
   body.dark-mode .layer-toolbar button:hover{ background: #F4F5F5; color: #42484C; }
-  body.dark-mode .envelope-letter{ background: #D3D7D9; }
+  body.dark-mode .envelope-letter{ background: #D3D7D9; color: #000; }
   /* ---- champs et boutons de paramètre (panneaux d'outils) : fond clair
      #D3D7D9 / texte sombre #42484C pour un contraste fort et lisible sur le
      fond du panneau (#42484C translucide) — remplace les fonds blancs ou
@@ -2086,20 +2090,20 @@
     <!-- ---- DESSIN ---- -->
     <div class="panel-content" id="panelDessin" style="display:none;">
       <div class="tool-row">
-        <button class="tool-btn draw-tool-btn" data-tool="pen" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Stylo
+        <button class="tool-btn draw-tool-btn" data-tool="pen" type="button" aria-label="Stylo" title="Stylo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
-        <button class="tool-btn draw-tool-btn" data-tool="brush" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l6-6 3 3-6 6M4 20l4-1 8-8-3-3-8 8-1 4z"/></svg> Pinceau
+        <button class="tool-btn draw-tool-btn" data-tool="brush" type="button" aria-label="Pinceau" title="Pinceau">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l6-6 3 3-6 6M4 20l4-1 8-8-3-3-8 8-1 4z"/></svg>
         </button>
-        <button class="tool-btn draw-tool-btn" data-tool="eraser" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H8l-5-5a2 2 0 010-3l9-9a2 2 0 013 0l5 5a2 2 0 010 3l-9 9"/></svg> Gomme
+        <button class="tool-btn draw-tool-btn" data-tool="eraser" type="button" aria-label="Gomme" title="Gomme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H8l-5-5a2 2 0 010-3l9-9a2 2 0 013 0l5 5a2 2 0 010 3l-9 9"/></svg>
         </button>
-        <button class="tool-btn draw-tool-btn" data-tool="select" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l7 17 2-7 7-2L4 4z"/></svg> Sélection
+        <button class="tool-btn draw-tool-btn" data-tool="select" type="button" aria-label="Sélection" title="Sélection">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4l7 17 2-7 7-2L4 4z"/></svg>
         </button>
-        <button class="tool-btn draw-tool-btn" data-tool="move" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg> Déplacer
+        <button class="tool-btn draw-tool-btn" data-tool="move" type="button" aria-label="Déplacer" title="Déplacer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>
         </button>
       </div>
       <button class="accordion-action danger" id="drawDeleteSelectionBtn" type="button" style="margin-top:8px; display:none;">Supprimer la sélection</button>
