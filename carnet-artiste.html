@@ -1185,7 +1185,7 @@
      var(--esprit) pour le fond/la bordure — redéfini en #072AC5 dans les
      variables du mode sombre ci-dessus, donc rien à répéter ici à part le
      texte (blanc légèrement teinté au lieu du blanc pur du mode clair). ---- */
-  body.dark-mode .tool-btn.selected{ color: #F4F5F5; }
+  body.dark-mode .tool-btn.selected{ background: #072AC5; border-color: #072AC5; color: #F4F5F5; }
   body.dark-mode .accordion-action{ border-color: rgba(211,215,217,.3); color: var(--ink-soft); }
   body.dark-mode .nnm-cancel{ background: #D3D7D9; color: #42484C; }
 
@@ -5120,6 +5120,12 @@
   // du blanc toute couleur suffisamment foncée (luminance perçue faible) ;
   // les couleurs déjà claires ou vives choisies par l'artiste sont conservées
   // telles quelles.
+  // ---- couleur effective en mode sombre (texte + formes) ----
+  // Le noir (ou toute teinte suffisamment sombre) bascule en blanc, sinon
+  // invisible sur une page devenue sombre. Toutes les autres couleurs
+  // choisies par l'artiste sont assombries de 15%, pour rester cohérentes
+  // avec le reste du chrome sombre plutôt que de garder leur éclat plein
+  // jour tel quel.
   function isColorDark(hex){
     try{
       const { r, g, b } = hexToRgb(hex);
@@ -5127,9 +5133,13 @@
       return (r * 0.299 + g * 0.587 + b * 0.114) < 90;
     } catch(e){ return false; }
   }
+  function effectiveDrawColor(color){
+    if (!document.body.classList.contains('dark-mode')) return color;
+    if (isColorDark(color)) return '#F4F5F5';
+    return darkenHex(color, 0.85);
+  }
   function effectiveTextColor(b){
-    if (document.body.classList.contains('dark-mode') && isColorDark(b.color)) return '#F4F5F5';
-    return b.color;
+    return effectiveDrawColor(b.color);
   }
   function styleTextEl(txt, b){
     const scale = getTextScaleFactor();
@@ -5260,7 +5270,7 @@
     return `stroke="${color}" stroke-width="${w}" vector-effect="non-scaling-stroke" stroke-linejoin="round" ${dash}`;
   }
   function shapeSVG(type, color, border){
-    const c = escapeHTML(color || '#41526b');
+    const c = escapeHTML(effectiveDrawColor(color || '#41526b'));
     const stroke = shapeStrokeAttrs(border || {});
     const radius = Math.max(0, (border && border.radius) || 0);
     if (type === 'circle') return `<svg viewBox="0 0 100 100" preserveAspectRatio="none"><circle cx="50" cy="50" r="46" fill="${c}" ${stroke}/></svg>`;
@@ -6252,13 +6262,17 @@
     darkModeBtn.setAttribute('aria-pressed', String(on));
     if (typeof applyBackground === 'function') applyBackground();
     if (typeof applyEnvelopeColor === 'function') applyEnvelopeColor();
-    // réapplique la couleur effective (noir → blanc ou inverse) des blocs de
-    // texte déjà affichés, sans attendre une prochaine sélection/édition
+    // réapplique la couleur effective (noir → blanc, autres → assombries)
+    // des blocs de texte et des formes déjà affichés, sans attendre une
+    // prochaine sélection/édition
     document.querySelectorAll('.content-block').forEach(el => {
       const b = blocksCache.find(x => x.id === el.id);
       if (b && b.type === 'text'){
         const txt = el.querySelector('.block-text');
         if (txt) styleTextEl(txt, b);
+      } else if (b && b.type === 'shape'){
+        const wrap = el.querySelector('.block-shape');
+        if (wrap) wrap.innerHTML = shapeSVG(b.shapeType, b.color, { color: b.borderColor, width: b.borderWidth, style: b.borderStyle, radius: b.radius });
       }
     });
   }
