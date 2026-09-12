@@ -4,8 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carnet d'étude — Corps / Esprit</title>
+<meta name="description" content="Carnet d'étude en ligne interactif explorant la dualité corps/esprit : pages illustrées, post-it collaboratifs et carnets multiples.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600;700&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600;700&family=Caveat:wght@400;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- OpenDyslexic : police d'accessibilité pour l'outil Texte, non disponible via Google Fonts -->
+<style>
+  @font-face{
+    font-family: 'OpenDyslexic';
+    src: url('https://cdn.jsdelivr.net/gh/antijingoist/open-dyslexic/otf/OpenDyslexic-Regular.otf') format('opentype');
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  @font-face{
+    font-family: 'OpenDyslexic';
+    src: url('https://cdn.jsdelivr.net/gh/antijingoist/open-dyslexic/otf/OpenDyslexic-Bold.otf') format('opentype');
+    font-weight: 700; font-style: normal; font-display: swap;
+  }
+</style>
 <!-- ---- PWA : permet d'installer le carnet comme une application (icône
      sur l'écran d'accueil / le dock, ouverture en plein écran sans barre
      d'adresse) sur ordinateur, tablette et mobile. Le mode artiste s'y prête
@@ -313,6 +327,18 @@
     border-radius:8px;
     flex-shrink:0;
     transition: opacity .22s ease, width .22s ease;
+  }
+  /* ---- anti-CLS : au tout premier rendu (avant que le visiteur ait pu
+     interagir), ni le book-viewport ni les marges ne doivent ANIMER leur
+     largeur — la couverture (ou les marges masquées) doivent s'afficher à
+     leur taille finale dès la première image peinte, sans transition visible
+     ni décalage de mise en page mesuré par Lighthouse (CLS). Cette classe
+     n'est posée que le temps du tout premier appel à renderSpread() dans
+     init() (voir plus bas) ; les navigations normales gardent leurs
+     transitions habituelles. */
+  body.no-anim .book-viewport,
+  body.no-anim .margin-zone{
+    transition: none !important;
   }
   /* ouverture/fermeture d'une couverture : léger fondu, pas de feuilletage 3D */
   .book-cover.cover-transition .book-viewport{ opacity:.4; }
@@ -637,8 +663,8 @@
     position:absolute; bottom:20px;
     font-family:'Inter', sans-serif; font-size:10px; color: rgba(38,35,25,.4); z-index:2;
   }
-  .page--left .page-number{ right:38px; }
-  .page--right .page-number{ left:38px; }
+  .page--left .page-number{ left:38px; }
+  .page--right .page-number{ right:38px; }
 
   .blank-hint{
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
@@ -701,6 +727,7 @@
   }
 
   .page-nav__indicator{
+    display:none;
     font-family:'Newsreader', serif; font-style:italic; font-size:13px;
     color: rgba(38,35,25,.58); min-width:60px; text-align:center;
   }
@@ -1781,17 +1808,6 @@
        feuille de style. */
   }
 
-  /* ---- indice de balayage (mode une-page-à-la-fois) ---- */
-  .swipe-hint{
-    position:fixed; bottom:78px; left:50%; transform:translateX(-50%);
-    display:none;
-    font-family:'Newsreader', serif; font-style:italic; font-size:11px;
-    color: rgba(38,35,25,.45);
-    pointer-events:none; z-index:44;
-  }
-  body.single-page-mode .swipe-hint{ display:block; }
-  body.single-page-mode.artist-mode .swipe-hint{ display:none; }
-
   /* ---- infobulles au survol des outils publics (Carnet/Post-it/
      Lecture silencieuse/Zoom/Mode sombre) — même esprit visuel que
      .swipe-hint ci-dessus (texte italique fin, sans encadré ni ombre),
@@ -1814,6 +1830,9 @@
       white-space:nowrap;
       font-family:'Newsreader', serif; font-style:italic; font-size:12px;
       color: rgba(38,35,25,.55);
+      background: rgba(255,255,255,.5);
+      padding:5px 12px;
+      border-radius:999px;
       opacity:0; pointer-events:none;
       transition: opacity .2s ease;
       z-index:60;
@@ -1823,6 +1842,7 @@
     body.dark-mode .public-toolbar .dock-btn[data-tooltip]::after,
     body.dark-mode .zoom-float-btn[data-tooltip]::after{
       color: #D3D7D9;
+      background: rgba(66,72,76,.5);
     }
     .public-toolbar .dock-btn[data-tooltip]:hover::after,
     .zoom-float-btn[data-tooltip]:hover::after{ opacity:1; }
@@ -1987,11 +2007,11 @@
 
       <label>Police</label>
       <select id="blockFontFamily">
-        <option value="'Newsreader', serif">Newsreader</option>
-        <option value="'Inter', sans-serif">Inter</option>
-        <option value="Georgia, serif">Georgia</option>
+        <option value="'Times New Roman', serif">Times New Roman</option>
+        <option value="'Montserrat', sans-serif">Montserrat</option>
         <option value="'Courier New', monospace">Courier New</option>
         <option value="'Caveat', cursive">Caveat (manuscrite)</option>
+        <option value="'OpenDyslexic', sans-serif">OpenDyslexic</option>
       </select>
 
       <label>Taille</label>
@@ -2364,6 +2384,7 @@
   </div>
 
 
+  <main id="mainContent" aria-label="Carnet">
   <div class="stage">
     <div class="book-scale-wrap" id="bookScaleWrap">
       <div class="margin-zone" id="marginLeft" data-container="marginLeft"></div>
@@ -2439,8 +2460,7 @@
       <div class="margin-zone" id="marginRight" data-container="marginRight"></div>
     </div>
   </div>
-
-  <div class="swipe-hint" id="swipeHint" aria-hidden="true">‹ glissez pour tourner la page ›</div>
+  </main>
 
   <!-- Ancien bouton flottant post-it : conservé uniquement comme déclencheur
        JS headless (voir CSS .add-postit-btn), sa place visuelle est reprise
@@ -2569,11 +2589,11 @@
     </button>
   </div>
 
-<!-- Bibliothèques d'export (double-page en PNG / PDF) — chargées en différé,
-     l'absence de réseau ne bloque rien d'autre : les boutons d'export
-     vérifient leur disponibilité avant utilisation. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<!-- Bibliothèques d'export (double-page en PNG / PDF) — chargées à la demande
+     seulement (voir ensureExportLibs() dans le script principal), au premier
+     clic sur un bouton d'export, plutôt qu'au chargement de la page : elles
+     pèsent une centaine de Ko et ne servent qu'à cette fonctionnalité
+     ponctuelle du mode artiste. -->
 
 <script>
   /* ============ STOCKAGE PERSISTANT ============
@@ -6514,11 +6534,41 @@
 
   // ============ Export de la double-page (PDF) ============
   // html2canvas capture le DOM du carnet en image ; jsPDF l'encapsule dans
-  // un PDF. Chargés via cdnjs — en l'absence de réseau, les boutons
-  // signalent simplement l'indisponibilité.
+  // un PDF. Chargées via cdnjs UNIQUEMENT au premier clic sur un bouton
+  // d'export (~100 Ko à eux deux, jamais nécessaires ailleurs) — voir
+  // ensureExportLibs(). En l'absence de réseau, les boutons signalent
+  // simplement l'indisponibilité plutôt que d'échouer silencieusement.
   const exportPdfBtn = document.getElementById('exportPdfBtn');
   const exportHint = document.getElementById('exportHint');
   const EXPORT_DEFAULT_HINT = exportHint ? exportHint.textContent : '';
+
+  function loadScriptOnce(src){
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[src="${src}"]`);
+      if (existing){
+        if (existing.dataset.loaded === '1') { resolve(); return; }
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error('load failed: ' + src)), { once: true });
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = src;
+      s.addEventListener('load', () => { s.dataset.loaded = '1'; resolve(); }, { once: true });
+      s.addEventListener('error', () => reject(new Error('load failed: ' + src)), { once: true });
+      document.body.appendChild(s);
+    });
+  }
+  let exportLibsPromise = null;
+  function ensureExportLibs(){
+    if (typeof html2canvas === 'function' && window.jspdf) return Promise.resolve(true);
+    if (!exportLibsPromise){
+      exportLibsPromise = Promise.all([
+        loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+        loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+      ]).then(() => true).catch(() => false);
+    }
+    return exportLibsPromise;
+  }
 
   async function captureSpreadCanvas(){
     document.querySelectorAll('.content-block').forEach(el => el.classList.add('export-hide-ui'));
@@ -6537,12 +6587,15 @@
     }
   }
   exportPdfBtn?.addEventListener('click', async () => {
-    if (typeof html2canvas !== 'function' || !window.jspdf){
-      exportHint.textContent = "Bibliothèque d'export indisponible (hors-ligne ?).";
-      return;
-    }
     if (exportPdfBtn.disabled) return;
     exportPdfBtn.disabled = true;
+    exportHint.textContent = "Chargement des outils d'export…";
+    const ready = await ensureExportLibs();
+    if (!ready || typeof html2canvas !== 'function' || !window.jspdf){
+      exportHint.textContent = "Bibliothèque d'export indisponible (hors-ligne ?).";
+      exportPdfBtn.disabled = false;
+      return;
+    }
     exportHint.textContent = 'Génération en cours…';
     try{
       const canvas = await captureSpreadCanvas();
@@ -6563,13 +6616,16 @@
 
   const exportAllPdfBtn = document.getElementById('exportAllPdfBtn');
   exportAllPdfBtn?.addEventListener('click', async () => {
-    if (typeof html2canvas !== 'function' || !window.jspdf){
+    if (animating) return; // évite de démarrer pendant une animation de tournage de page
+    exportAllPdfBtn.disabled = true;
+    exportHint.textContent = "Chargement des outils d'export…";
+    const ready = await ensureExportLibs();
+    if (!ready || typeof html2canvas !== 'function' || !window.jspdf){
       exportHint.textContent = "Bibliothèque d'export indisponible (hors-ligne ?).";
+      exportAllPdfBtn.disabled = false;
       return;
     }
-    if (animating) return; // évite de démarrer pendant une animation de tournage de page
     const originalSpread = spread;
-    exportAllPdfBtn.disabled = true;
     try{
       const { jsPDF } = window.jspdf;
       let pdf = null;
@@ -7458,6 +7514,12 @@
 
   (async function init(){
     document.body.classList.toggle('single-page-mode', singlePageMode);
+    // anti-CLS : le tout premier renderSpread() ci-dessous peut basculer les
+    // classes qui redimensionnent book-viewport / margin-zone (couverture,
+    // marges masquées) — voir la règle body.no-anim en CSS. On la retire
+    // juste après, une fois ce premier état stable peint, pour ne pas priver
+    // les navigations normales de leur transition.
+    document.body.classList.add('no-anim');
     fitBookToViewport();
     await loadNotebookData();
     await loadCustomNotebooks();
@@ -7466,6 +7528,7 @@
     renderSpread(spread);
     updateSinglePageView();
     fitBookToViewport();
+    requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.remove('no-anim')));
     await tryAutoUnlockArtist();
     setupLiveSync(); // no-op si finalement en mode artiste (voir tryAutoUnlockArtist ci-dessus)
     // Indice de bienvenue, une seule fois par visiteur/appareil (mode public
