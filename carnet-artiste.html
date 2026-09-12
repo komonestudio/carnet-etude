@@ -817,27 +817,36 @@
   .add-postit-btn svg{ width:22px; height:22px; color:#2a2413; }
   .add-postit-btn.active svg{ color:#fff; }
 
-  /* ---- Zoom + Mode sombre : regroupés dans un vrai dock (même style que
-     .artist-dock / .public-toolbar — pilule sombre verticale), fixe en
-     haut à gauche, identique dans les deux modes et à toutes les tailles
-     d'écran. Remplace deux boutons flottants indépendants, sujets à des
-     conflits de positionnement (chevauchement) selon écran/mode. ---- */
+  /* ---- Zoom + Mode sombre : regroupés dans un vrai dock, fixe en haut à
+     gauche, identique dans les deux modes et à toutes les tailles d'écran.
+     Remplace deux boutons flottants indépendants, sujets à des conflits de
+     positionnement (chevauchement) selon écran/mode. En MODE JOUR : pilule
+     blanche translucide façon verre (même recette que .page-nav__arrow /
+     .notebook-selector), icônes en couleur d'encre (--ink). En mode sombre,
+     repasse à la pilule sombre d'origine — voir l'override plus bas, groupé
+     avec les autres composants « verre » (body.dark-mode ...). ---- */
   .tools-dock{
     position:fixed; top:16px; left:16px; z-index:56;
     display:flex; flex-direction:column; align-items:center; gap:4px;
-    background:#1b1916; border-radius:999px; padding:10px 8px;
-    box-shadow: 0 18px 40px rgba(20,17,10,.35), 0 2px 8px rgba(20,17,10,.25);
+    background: rgba(255,255,255,.72);
+    border:1px solid rgba(38,35,25,.14);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius:999px; padding:10px 8px;
+    box-shadow: 0 18px 40px rgba(20,17,10,.16), 0 2px 8px rgba(20,17,10,.1);
   }
   .tools-dock .zoom-float-btn{
     position:static; width:40px; height:40px; border-radius:50%;
     background:transparent; border:none; cursor:pointer;
-    color: rgba(255,255,255,.62);
+    color: var(--ink);
     display:flex; align-items:center; justify-content:center;
     transition: background .15s ease, color .15s ease;
     box-shadow:none;
   }
-  .tools-dock .zoom-float-btn:hover{ color:#fff; background: rgba(255,255,255,.09); transform:none; }
-  .tools-dock .zoom-float-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
+  .tools-dock .zoom-float-btn:hover{ background: rgba(38,35,25,.08); transform:none; }
+  .tools-dock .zoom-float-btn.active{ color: var(--esprit); background: rgba(65,82,107,.14); }
+  body.dark-mode .tools-dock .zoom-float-btn:hover{ background: rgba(255,255,255,.1); }
+  body.dark-mode .tools-dock .zoom-float-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
   .tools-dock .zoom-float-btn svg{ width:18px; height:18px; color:currentColor; }
   .zoom-float-panel{
     position:fixed; top:100px; left:16px; z-index:55;
@@ -853,24 +862,34 @@
      style du dock artiste : verticale, à droite de l'écran. En mobile/
      tablette, redevient une barre horizontale flottante en bas (voir le
      bloc @media plus bas) — les deux rôles ne coexistant jamais (l'un ou
-     l'autre selon le mode), la même zone de l'écran peut être réutilisée. ---- */
+     l'autre selon le mode), la même zone de l'écran peut être réutilisée.
+     MODE JOUR : pilule blanche translucide, icônes en couleur d'encre
+     (--ink) — même recette que .artist-dock. En mode sombre, passe au gris
+     foncé translucide partagé par tout le chrome flottant — voir l'override
+     groupé (body.dark-mode ...) plus bas. ---- */
   .public-toolbar{
     position:fixed; top:50%; right:26px; transform:translateY(-50%); z-index:56;
     display:none; flex-direction:column; align-items:center; gap:4px;
-    background:#1b1916; border-radius:999px; padding:10px 8px;
-    box-shadow: 0 18px 40px rgba(20,17,10,.35), 0 2px 8px rgba(20,17,10,.25);
+    background: rgba(255,255,255,.72);
+    border:1px solid rgba(38,35,25,.14);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius:999px; padding:10px 8px;
+    box-shadow: 0 18px 40px rgba(20,17,10,.16), 0 2px 8px rgba(20,17,10,.1);
     cursor:grab; touch-action:none;
   }
   body:not(.artist-mode) .public-toolbar{ display:flex; }
   .public-toolbar .dock-btn{
     position:relative; width:40px; height:40px; border-radius:50%; border:none; cursor:pointer;
-    background:transparent; color: rgba(255,255,255,.62);
+    background:transparent; color: var(--ink);
     display:flex; align-items:center; justify-content:center;
     transition: background .15s ease, color .15s ease;
   }
   .public-toolbar .dock-btn svg{ width:18px; height:18px; }
-  .public-toolbar .dock-btn:hover{ color:#fff; background: rgba(255,255,255,.09); }
-  .public-toolbar .dock-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
+  .public-toolbar .dock-btn:hover{ background: rgba(38,35,25,.08); }
+  .public-toolbar .dock-btn.active{ color: var(--esprit); background: rgba(65,82,107,.14); }
+  body.dark-mode .public-toolbar .dock-btn:hover{ background: rgba(255,255,255,.1); }
+  body.dark-mode .public-toolbar .dock-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
 
   .public-carnet-dropdown{
     position:fixed; top:50%; right:92px; transform:translateY(-50%);
@@ -1086,21 +1105,40 @@
      automatiquement (page, texte, marges) sans dupliquer chaque règle ---- */
   body.dark-mode{
     --margin-1:#232323; --margin-2:#0e0e0e;
-    --paper:#3a3a3a; --paper-2:#454545;
+    --paper:#1c1f21; --paper-2:#26292b;
     --ink:#f0efe9; --ink-soft:#a9a49b;
     --card-bg: rgba(30,30,30,.88); --card-border: rgba(255,255,255,.14);
     --highlight-color: rgba(201,173,74,.5);
   }
-  #darkModeBtn.active{ background: linear-gradient(155deg, #2f3c50, var(--esprit)); }
+  #darkModeBtn.active{ background: linear-gradient(155deg, #2f3c50, var(--esprit)); color:#fff; }
+
+  /* ---- mode sombre : contraste des éléments de page qui ne suivent pas
+     var(--ink) (couleurs fixes conçues pour une page claire, illisibles sur
+     une page sombre) — reliure centrale (fils de couture + liseré
+     pointillé), numérotation, mention discrète en bas de page, indice de
+     page vierge. ---- */
+  body.dark-mode .spine::after{
+    background-image:
+      repeating-linear-gradient(115deg, rgba(211,215,217,.55) 0 2px, transparent 2px 13px),
+      repeating-linear-gradient(65deg, rgba(211,215,217,.55) 0 2px, transparent 2px 13px);
+  }
+  body.dark-mode .spine svg line{ stroke: #d3d7d9; }
+  body.dark-mode .page-number{ color: rgba(211,215,217,.55); }
+  body.dark-mode .page-watermark{ color: rgba(211,215,217,.4); }
+  body.dark-mode .blank-hint{ color: rgba(211,215,217,.32); }
 
   /* ---- chrome flottant (pastilles/panneaux en « verre » translucide) :
      conçu à l'origine pour un fond clair (background blanc translucide,
-     bordure sombre) — en mode sombre on inverse ce couple pour rester
-     lisible, sans toucher aux nombreux sélecteurs individuels un par un. */
+     bordure sombre) — en mode sombre on inverse ce couple (gris foncé
+     translucide #42484C, bordure claire) pour rester lisible, sans
+     toucher aux nombreux sélecteurs individuels un par un. */
   body.dark-mode .page-nav__arrow,
   body.dark-mode .visitor-counter,
   body.dark-mode .writing-indicator,
   body.dark-mode .zoom-float-panel,
+  body.dark-mode .artist-dock,
+  body.dark-mode .tools-dock,
+  body.dark-mode .public-toolbar,
   body.dark-mode .notebook-selector,
   body.dark-mode .notebook-dropdown,
   body.dark-mode .public-carnet-dropdown,
@@ -1110,11 +1148,11 @@
   body.dark-mode .comment-thread,
   body.dark-mode .crop-toolbar,
   body.dark-mode .new-notebook-modal__card{
-    background: rgba(18,18,18,.92);
+    background: rgba(66,72,76,.88);
     border-color: rgba(255,255,255,.18);
   }
-  body.dark-mode .page-nav__arrow:hover{ background: rgba(48,48,48,.95); }
-  body.dark-mode .notebook-selector:hover{ background: rgba(48,48,48,.95); }
+  body.dark-mode .page-nav__arrow:hover{ background: rgba(86,92,96,.95); }
+  body.dark-mode .notebook-selector:hover{ background: rgba(86,92,96,.95); }
   body.dark-mode .layer-toolbar button:hover{ background: rgba(255,255,255,.1); }
   body.dark-mode .postit-panel input,
   body.dark-mode .postit-panel textarea,
@@ -1145,7 +1183,6 @@
      l'artiste (texte/image/forme/dessin, couvertures) ---- */
   body.silent-reading .postit,
   body.silent-reading .writing-indicator{ display:none !important; }
-  #publicSilentBtn.active{ color:#fff; background: rgba(255,255,255,.18); }
 
   /* jauge visiteurs — centrée en haut, mode artiste uniquement */
   .visitor-counter{
@@ -1163,39 +1200,49 @@
   }
   body.artist-mode .visitor-counter{ display:flex; }
   .visitor-counter svg{ width:13px; height:13px; opacity:.7; }
-  .visitor-counter b{ font-weight:700; color: var(--esprit); }
+  .visitor-counter b{ font-weight:700; color: var(--ink); }
 
   body.artist-mode .new-notebook-btn{ display:flex; }
 
-  /* ---- dock d'outils de l'artiste (barre verticale façon app mobile) ---- */
+  /* ---- dock d'outils de l'artiste (barre verticale façon app mobile) ----
+     MODE JOUR : pilule blanche translucide façon verre (même recette que
+     .page-nav__arrow / .notebook-selector), icônes en couleur d'encre
+     (--ink), donc noires. En mode sombre, repasse à la pilule sombre
+     d'origine — voir l'override groupé avec les autres composants
+     « verre » (body.dark-mode ...) plus bas. */
   .artist-dock{
     position:fixed; top:50%; right:26px; transform:translateY(-50%); z-index:56;
     display:none; flex-direction:column; align-items:center; gap:4px;
-    background:#1b1916;
+    background: rgba(255,255,255,.72);
+    border:1px solid rgba(38,35,25,.14);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-radius:999px;
     padding:10px 8px;
-    box-shadow: 0 18px 40px rgba(20,17,10,.35), 0 2px 8px rgba(20,17,10,.25);
+    box-shadow: 0 18px 40px rgba(20,17,10,.16), 0 2px 8px rgba(20,17,10,.1);
     cursor:grab; touch-action:none;
   }
   body.artist-mode .artist-dock{ display:flex; }
   .dock-btn{
     width:40px; height:40px; border-radius:50%; border:none; cursor:pointer;
-    background:transparent; color: rgba(255,255,255,.6);
+    background:transparent; color: var(--ink);
     display:flex; align-items:center; justify-content:center;
     transition: background .15s ease, color .15s ease;
   }
   .dock-btn svg{ width:18px; height:18px; }
-  .dock-btn:hover{ color:#fff; background: rgba(255,255,255,.09); }
-  .dock-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
+  .dock-btn:hover{ background: rgba(38,35,25,.08); }
+  .dock-btn.active{ color: var(--esprit); background: rgba(65,82,107,.14); }
+  body.dark-mode .dock-btn:hover{ background: rgba(255,255,255,.1); }
+  body.dark-mode .dock-btn.active{ color:#fff; background: rgba(255,255,255,.18); }
   .dock-btn--plus{
     width:52px; height:52px; margin:2px 0;
-    background:#fff; color: var(--esprit);
-    box-shadow: 0 8px 18px rgba(20,17,10,.3);
+    background: var(--esprit); color:#fff;
+    box-shadow: 0 8px 18px rgba(20,17,10,.22);
     transition: transform .2s ease, background .2s ease, color .2s ease;
   }
   .dock-btn--plus svg{ width:20px; height:20px; transition: transform .2s ease; }
   .dock-btn--plus:hover{ transform: scale(1.05); }
-  .dock-btn--plus.active{ background: var(--esprit); color:#fff; }
+  .dock-btn--plus.active{ background:#2f3c50; color:#fff; }
   .dock-btn--plus.active svg{ transform: rotate(45deg); }
   .mobile-only-shortcuts{ display:none; }
 
