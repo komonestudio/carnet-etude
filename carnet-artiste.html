@@ -1001,9 +1001,9 @@
   }
   .postit-panel__head h3{ margin:0; font-size:15px; font-weight:700; color: var(--ink); }
   .postit-panel__close{
-    width:24px; height:24px; border:none; background:rgba(38,35,25,.06);
+    width:24px; height:24px; border:none; background:#262A2C;
     border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;
-    color: var(--ink-soft);
+    color: #fff;
   }
   .postit-panel__close svg{ width:12px; height:12px; }
   .postit-panel label{
@@ -1161,6 +1161,7 @@
   body.dark-mode .page-nav__arrow:hover{ background: #656D72; }
   body.dark-mode .notebook-selector:hover{ background: #656D72; }
   body.dark-mode .layer-toolbar button:hover{ background: #F4F5F5; color: #42484C; }
+  body.dark-mode .envelope-letter{ background: #D3D7D9; }
   /* ---- champs et boutons de paramètre (panneaux d'outils) : fond clair
      #D3D7D9 / texte sombre #42484C pour un contraste fort et lisible sur le
      fond du panneau (#42484C translucide) — remplace les fonds blancs ou
@@ -1289,9 +1290,9 @@
   .artist-panel__head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; cursor:move; touch-action:none; }
   .artist-panel__head h4{ margin:0; font-size:13px; font-weight:700; color: var(--ink); text-transform:none; letter-spacing:0; }
   .artist-panel__close{
-    width:24px; height:24px; border:none; background:rgba(38,35,25,.06);
+    width:24px; height:24px; border:none; background:#262A2C;
     border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;
-    color: var(--ink-soft); flex-shrink:0;
+    color: #fff; flex-shrink:0;
   }
   .artist-panel__close svg{ width:11px; height:11px; }
 
@@ -1624,7 +1625,7 @@
   /* ---- indicateur de poids du carnet (panneau +) ---- */
   .storage-usage{ margin-bottom:14px; }
   .storage-usage__bar{
-    width:100%; height:6px; border-radius:999px; background: rgba(38,35,25,.1); overflow:hidden;
+    width:100%; height:6px; border-radius:999px; background: #262A2C; overflow:hidden;
   }
   .storage-usage__fill{
     height:100%; width:0%; border-radius:999px; background: var(--esprit);
@@ -2194,6 +2195,10 @@
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="accordion-body" id="accordionBackground">
+        <div class="tool-row" style="margin-bottom:14px;">
+          <button class="tool-btn bg-tab-btn selected" data-bgtab="day" type="button">Mode jour</button>
+          <button class="tool-btn bg-tab-btn" data-bgtab="night" type="button">Mode nuit</button>
+        </div>
         <div class="plus-field">
           <label for="bgColorInput">Couleur</label>
           <input type="color" id="bgColorInput" value="#e7e2d1">
@@ -3943,8 +3948,15 @@
     }
 
     const rawBackgrounds = await storageGet('backgrounds:' + currentNotebookId, true);
-    try{ backgroundsCache = rawBackgrounds ? JSON.parse(rawBackgrounds) : {}; }
-    catch(e){ backgroundsCache = {}; }
+    try{ backgroundsCache = rawBackgrounds ? JSON.parse(rawBackgrounds) : { day: {}, night: {} }; }
+    catch(e){ backgroundsCache = { day: {}, night: {} }; }
+    // migration : ancien format plat {color,image} (un seul fond, avant la
+    // distinction jour/nuit) -> repris comme fond du mode jour, nuit vierge
+    if (backgroundsCache.day === undefined && backgroundsCache.night === undefined){
+      backgroundsCache = { day: backgroundsCache, night: {} };
+    }
+    backgroundsCache.day = backgroundsCache.day || {};
+    backgroundsCache.night = backgroundsCache.night || {};
 
     // On MUTE coverFront/coverBack en place (jamais de réaffectation `coverFront = …`) :
     // setupCoverPageEditor() a capturé une référence stable vers ces objets à
@@ -4431,6 +4443,9 @@
     }
     if (tool === 'enveloppe' && typeof refreshEnvelopePanel === 'function'){
       refreshEnvelopePanel();
+    }
+    if (tool === 'plus' && typeof refreshBgPanel === 'function'){
+      refreshBgPanel();
     }
   }
   function closeArtistPanel(){
@@ -6235,6 +6250,8 @@
     document.body.classList.toggle('dark-mode', on);
     darkModeBtn.classList.toggle('active', on);
     darkModeBtn.setAttribute('aria-pressed', String(on));
+    if (typeof applyBackground === 'function') applyBackground();
+    if (typeof applyEnvelopeColor === 'function') applyEnvelopeColor();
     // réapplique la couleur effective (noir → blanc ou inverse) des blocs de
     // texte déjà affichés, sans attendre une prochaine sélection/édition
     document.querySelectorAll('.content-block').forEach(el => {
@@ -6570,7 +6587,11 @@
 
 
   // ---- arrière-plan du site (fond derrière le carnet — pas les pages) ----
-  let backgroundsCache = {}; // { color, image }, partagé, un seul fond par carnet
+  // Deux fonds indépendants, jour et nuit, choisis selon body.dark-mode au
+  // moment de l'affichage (voir applyBackground). bgEditTarget indique lequel
+  // des deux les contrôles du panneau modifient actuellement (onglets).
+  let backgroundsCache = { day: {}, night: {} }; // { day:{color,image}, night:{color,image} }, partagé
+  let bgEditTarget = 'day';
   const bgColorInput = document.getElementById('bgColorInput');
   const bgImageInput = document.getElementById('bgImageInput');
   const bgImageApply = document.getElementById('bgImageApply');
@@ -6627,7 +6648,7 @@
   });
 
   function applyBackground(){
-    const bg = backgroundsCache || {};
+    const bg = (backgroundsCache && backgroundsCache[document.body.classList.contains('dark-mode') ? 'night' : 'day']) || {};
     if (bg.image){
       document.body.style.backgroundImage = `url("${bg.image}")`;
       document.body.style.backgroundAttachment = 'fixed';
@@ -6656,20 +6677,20 @@
   // de pushUndo() ici, le fond du site change rarement et indépendamment
   // du contenu (blocs/post-it/dessins).
   bgColorInput.addEventListener('input', async () => {
-    backgroundsCache = { color: bgColorInput.value, image: '' };
+    backgroundsCache[bgEditTarget] = { color: bgColorInput.value, image: '' };
     applyBackground();
     await persistBackgrounds();
   });
   bgImageApply.addEventListener('click', async () => {
     const image = pendingBgImageDataUrl || bgImageInput.value.trim();
     if (!image) return;
-    backgroundsCache = { color: '', image };
+    backgroundsCache[bgEditTarget] = { color: '', image };
     applyBackground();
     await persistBackgrounds();
     refreshStorageUsage();
   });
   bgReset.addEventListener('click', async () => {
-    backgroundsCache = {};
+    backgroundsCache[bgEditTarget] = {};
     bgImageInput.value = '';
     pendingBgImageFile = null;
     pendingBgImageDataUrl = null;
@@ -6677,6 +6698,32 @@
     bgImagePreviewWrap.style.display = 'none';
     applyBackground();
     await persistBackgrounds();
+  });
+
+  // resynchronise les champs du panneau avec le fond de l'onglet actif
+  // (jour ou nuit) — appelé au changement d'onglet et à l'ouverture du panneau
+  function refreshBgPanel(){
+    const bg = backgroundsCache[bgEditTarget] || {};
+    bgColorInput.value = bg.color || '#e7e2d1';
+    pendingBgImageFile = null;
+    pendingBgImageDataUrl = null;
+    bgImageFile.value = '';
+    if (bg.image){
+      bgImageInput.value = bg.image.startsWith('data:') ? '' : bg.image;
+      bgImagePreview.src = bg.image;
+      bgImagePreviewWrap.style.display = 'block';
+    } else {
+      bgImageInput.value = '';
+      bgImagePreviewWrap.style.display = 'none';
+    }
+  }
+  document.querySelectorAll('.bg-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.bg-tab-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      bgEditTarget = btn.dataset.bgtab;
+      refreshBgPanel();
+    });
   });
 
   // ---- couleur du carnet (unifiée) ----
@@ -6722,9 +6769,10 @@
   // règles .envelope-body / .envelope-fold / .envelope-flap.
   function applyEnvelopeColor(){
     const base = envelopeConfig.color || DEFAULT_ENVELOPE_COLOR;
-    envelopeScene.style.setProperty('--env-c1', lightenHex(base, 0.3));
-    envelopeScene.style.setProperty('--env-c2', base);
-    envelopeScene.style.setProperty('--env-c3', darkenHex(base, 0.82));
+    const effectiveBase = document.body.classList.contains('dark-mode') ? darkenHex(base, 0.85) : base;
+    envelopeScene.style.setProperty('--env-c1', lightenHex(effectiveBase, 0.3));
+    envelopeScene.style.setProperty('--env-c2', effectiveBase);
+    envelopeScene.style.setProperty('--env-c3', darkenHex(effectiveBase, 0.82));
   }
   function persistEnvelopeConfig(){
     return storageSet('envelopeConfig:' + currentNotebookId, JSON.stringify(envelopeConfig), true);
