@@ -656,14 +656,14 @@
   .page-watermark{
     position:absolute; bottom:20px;
     font-family:'Newsreader', serif; font-style:italic; font-size:11px;
-    color: rgba(38,35,25,.4); z-index:2;
+    color: var(--ink-soft); z-index:2;
   }
   .page--left .page-watermark{ left:38px; }
   .page--right .page-watermark{ right:38px; text-align:right; }
 
   .page-number{
     position:absolute; bottom:20px;
-    font-family:'Inter', sans-serif; font-size:10px; color: rgba(38,35,25,.4); z-index:2;
+    font-family:'Inter', sans-serif; font-size:10px; color: var(--ink-soft); z-index:2;
   }
   .page--left .page-number{ left:38px; }
   .page--right .page-number{ right:38px; }
@@ -671,7 +671,7 @@
   .blank-hint{
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     font-family:'Newsreader', serif; font-style:italic; font-size:12.5px;
-    color: rgba(38,35,25,.4); text-align:center; width:74%;
+    color: var(--ink-soft); text-align:center; width:74%;
   }
 
   /* ---------- Reliure centrale ---------- */
@@ -890,6 +890,159 @@
     font-family:'Inter', sans-serif;
   }
   .zoom-float-panel.open{ display:block; }
+
+  /* ============ MODE DE LECTURE INCLUSIF ============ */
+  /* dock tournesol : séparé du dock zoom/mode sombre (haut gauche), ancré en
+     haut à DROITE — ne doit jamais chevaucher .public-toolbar (centrée
+     verticalement à droite, voir plus bas), d'où un ancrage haut plutôt que
+     centré. Même recette visuelle que .tools-dock (pilule verre translucide). */
+  .inclusive-dock{
+    position:fixed; top:16px; right:16px; z-index:56;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background: rgba(255,255,255,.65);
+    border:1px solid rgba(38,35,25,.12);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius:999px; padding:10px 8px;
+    box-shadow: 0 20px 44px rgba(20,17,10,.22), 0 3px 10px rgba(20,17,10,.14);
+  }
+  body.dark-mode .inclusive-dock{
+    background: rgba(66,72,76,.88);
+    border-color: rgba(244,245,245,.18);
+  }
+  .inclusive-dock .inclusive-btn{
+    position:static; width:40px; height:40px; border-radius:50%;
+    background:transparent; border:none; cursor:pointer;
+    color: var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    transition: background .15s ease, color .15s ease;
+    box-shadow:none;
+  }
+  .inclusive-dock .inclusive-btn:hover{ background: rgba(38,35,25,.08); }
+  .inclusive-dock .inclusive-btn.active{ color: var(--esprit); background: rgba(251,133,0,.14); }
+  body.dark-mode .inclusive-dock .inclusive-btn:hover{ background: #F4F5F5; color: #42484C; }
+  body.dark-mode .inclusive-dock .inclusive-btn.active{ color:#42484C; background: #F4F5F5; }
+  .inclusive-dock .inclusive-btn svg{ width:18px; height:18px; }
+
+  /* sous-pilule DYS / Voix : apparaît sous le dock tournesol quand le mode
+     est actif, alignée sur le même bord droit, verticale (façon .tools-dock) */
+  .inclusive-options-pill{
+    position:fixed; top:74px; right:16px; z-index:58;
+    display:none; flex-direction:column; align-items:center; gap:4px;
+    background: rgba(255,255,255,.65);
+    border:1px solid rgba(38,35,25,.12);
+    backdrop-filter: blur(10px);
+    border-radius:999px; padding:8px;
+    box-shadow: 0 20px 44px rgba(20,17,10,.22), 0 3px 10px rgba(20,17,10,.14);
+  }
+  .inclusive-options-pill.open{ display:flex; }
+  body.dark-mode .inclusive-options-pill{
+    background: rgba(66,72,76,.88);
+    border-color: rgba(244,245,245,.18);
+  }
+  .inclusive-options-pill button{
+    width:38px; height:38px; border-radius:50%; border:none; cursor:pointer;
+    background:transparent; color: var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    transition: background .15s ease, color .15s ease;
+  }
+  .inclusive-options-pill button:hover{ background: rgba(38,35,25,.08); }
+  .inclusive-options-pill button.active{ color: var(--esprit); background: rgba(251,133,0,.14); }
+  body.dark-mode .inclusive-options-pill button:hover{ background: #F4F5F5; color: #42484C; }
+  body.dark-mode .inclusive-options-pill button.active{ color:#42484C; background: #F4F5F5; }
+  .inclusive-options-pill button.inclusive-dys-btn{
+    font-family:'Inter', sans-serif; font-size:13px; font-weight:800;
+    letter-spacing:.02em;
+  }
+  .inclusive-options-pill button svg{ width:18px; height:18px; }
+
+  /* calque d'arrière-plan derrière la page de lecture unique */
+  .inclusive-overlay{
+    position:fixed; inset:0; z-index:40; display:none;
+    background: rgba(211,215,217,.8);
+  }
+  body.dark-mode .inclusive-overlay{ background: rgba(38,42,44,.8); }
+  body.inclusive-mode .inclusive-overlay{ display:block; }
+  body.inclusive-mode .stage{ display:none; } /* la double-page 3D cède la place à la vue inclusive */
+
+  /* page unique centrale, défilement vertical, bordure façon couverture */
+  .inclusive-reading-view{
+    position:fixed; inset:0; z-index:41; display:none;
+    align-items:center; justify-content:center;
+    padding: 40px 0;
+  }
+  body.inclusive-mode .inclusive-reading-view{ display:flex; }
+  .inclusive-page{
+    position:relative;
+    width:min(680px, 88vw);
+    height:calc(100vh - 80px);
+    background: var(--paper);
+    border: 6px solid var(--cover, #221f1b);
+    border-radius: 14px;
+    box-shadow: 0 30px 60px rgba(20,17,10,.35);
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding: 48px 44px 60px;
+    /* bandeau de défilement sombre, façon tranche du carnet, côté droit */
+    scrollbar-width: thin;
+    scrollbar-color: var(--cover, #221f1b) transparent;
+  }
+  .inclusive-page::-webkit-scrollbar{ width:12px; }
+  .inclusive-page::-webkit-scrollbar-track{ background: transparent; }
+  .inclusive-page::-webkit-scrollbar-thumb{
+    background: var(--cover, #221f1b);
+    border-radius:999px;
+    border: 3px solid var(--paper);
+  }
+  /* typographie par défaut du mode inclusif : Times New Roman (confort
+     TDAH), quelle que soit la police choisie par l'artiste pour ses blocs —
+     le mode inclusif prime volontairement sur les choix stylistiques */
+  .inclusive-page, .inclusive-page *{
+    font-family: 'Times New Roman', Times, serif !important;
+    line-height:1.7;
+  }
+  body.inclusive-dys .inclusive-page, body.inclusive-dys .inclusive-page *{
+    font-family: 'OpenDyslexic', sans-serif !important;
+  }
+  .inclusive-page article{
+    margin-bottom:34px; padding-bottom:26px;
+    border-bottom:1px solid rgba(38,35,25,.12);
+  }
+  .inclusive-page article:last-child{ border-bottom:none; }
+  .inclusive-page article h3{
+    font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color: var(--ink-soft); margin:0 0 10px; font-family:'Inter', sans-serif !important;
+  }
+  .inclusive-page p{
+    font-size:16px; color: var(--ink); margin:0 0 14px; white-space:pre-wrap;
+  }
+  .inclusive-page img{ max-width:100%; border-radius:6px; margin:0 0 14px; display:block; }
+  .inclusive-page .postit-entry{
+    font-size:14.5px; color: var(--ink-soft); border-left:3px solid var(--esprit);
+    padding:4px 0 4px 12px; margin:0 0 12px;
+  }
+  .inclusive-page .postit-entry b{ color: var(--ink); }
+  .inclusive-page .empty-hint{
+    font-style:italic; color: var(--ink-soft); font-size:13.5px;
+  }
+  /* surlignage du paragraphe en cours de lecture vocale */
+  .inclusive-page p.is-reading, .inclusive-page .postit-entry.is-reading{
+    background: var(--highlight-color);
+    border-radius:4px;
+    box-shadow: 0 0 0 4px var(--highlight-color);
+  }
+  .inclusive-close-btn{
+    position:absolute; top:14px; right:14px; z-index:2;
+    width:30px; height:30px; border-radius:50%; border:none; cursor:pointer;
+    background: rgba(38,35,25,.08); color: var(--ink);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .inclusive-close-btn svg{ width:14px; height:14px; }
+  @media (max-width: 520px){
+    .inclusive-dock{ top:12px; right:12px; }
+    .inclusive-options-pill{ top:70px; right:12px; }
+    .inclusive-page{ padding:38px 22px 50px; }
+  }
 
   /* ---- barre publique : Carnet + Post-it (mode public uniquement).
      En format site web (desktop), reprend exactement l'emplacement et le
@@ -1164,9 +1317,9 @@
       repeating-linear-gradient(65deg, #D3D7D9 0 2px, transparent 2px 13px);
   }
   body.dark-mode .spine svg line{ stroke: #D3D7D9; }
-  body.dark-mode .page-number{ color: #D3D7D9; }
-  body.dark-mode .page-watermark{ color: #D3D7D9; }
-  body.dark-mode .blank-hint{ color: #D3D7D9; }
+  /* page-number / page-watermark / blank-hint suivent déjà var(--ink-soft),
+     redéfini en #D3D7D9 dans les variables du mode sombre ci-dessus — rien
+     à répéter ici. */
 
   /* ---- chrome flottant (pastilles/panneaux en « verre » translucide) :
      conçu à l'origine pour un fond clair (background blanc translucide,
@@ -2484,6 +2637,54 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
     </button>
   </div>
+
+  <!-- ============ Dock Mode de lecture inclusif : indépendant, fixe en haut à
+       droite (ne doit jamais chevaucher .public-toolbar, centrée
+       verticalement sur le même bord — voir plus bas) ============ -->
+  <div class="inclusive-dock">
+    <button class="inclusive-btn" id="inclusiveModeBtn" type="button" aria-label="Activer le mode lecture accessible" data-tooltip="Mode lecture accessible" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <g>
+          <ellipse cx="12" cy="5.4" rx="1.7" ry="3"/>
+          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(45 12 12)"/>
+          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(90 12 12)"/>
+          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(135 12 12)"/>
+          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(180 12 12)"/>
+          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(225 12 12)"/>
+          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(270 12 12)"/>
+          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(315 12 12)"/>
+        </g>
+        <circle cx="12" cy="12" r="3.1" fill="currentColor" stroke="none"/>
+        <path d="M12 21.5v-6" stroke-linecap="round"/>
+        <path d="M12 18.5c-1.4-.3-2.2-1.2-2.4-2.4" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+  <div class="inclusive-options-pill" id="inclusiveOptionsPill">
+    <button type="button" id="inclusiveDysBtn" class="inclusive-dys-btn" aria-label="Activer la police DYS" aria-pressed="false" data-tooltip="Police DYS">DYS</button>
+    <button type="button" id="inclusiveVoiceBtn" aria-label="Lire le carnet à voix haute" aria-pressed="false" data-tooltip="Lecture à voix haute">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M16 8a5 5 0 010 8M19 5a9 9 0 010 14"/></svg>
+    </button>
+  </div>
+
+  <!-- ============ MODE DE LECTURE INCLUSIF : calque + page unique défilante ============
+       Vue parallèle au livre 3D : ne modifie ni ne remplace le moteur du
+       carnet (double-page, .book, relX/relY) — elle relit simplement
+       blocksCache/postitsCache/coverFront au moment de l'activation et les
+       réaffiche à plat, dans l'ordre naturel de lecture (haut en bas, page
+       par page). Les traits de dessin (canvas) ne sont pas repris ici : ils
+       n'ont pas de contenu textuel/vocalisable, une vue "lecture" n'a donc
+       rien à en tirer. -->
+  <div class="inclusive-overlay" id="inclusiveOverlay"></div>
+  <div class="inclusive-reading-view" id="inclusiveReadingView">
+    <div class="inclusive-page" id="inclusivePage">
+      <button class="inclusive-close-btn" id="inclusiveCloseBtn" type="button" aria-label="Quitter le mode lecture accessible">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <main id="inclusiveMain" aria-label="Contenu du carnet en lecture accessible"></main>
+    </div>
+  </div>
+
   <div class="zoom-float-panel" id="zoomFloatPanel">
     <div class="tool-row">
       <button class="tool-btn" id="zoomOutBtn" type="button" aria-label="Zoom arrière" title="Zoom arrière">
@@ -6310,6 +6511,172 @@
     await storageSet('darkMode', on ? '1' : '0', false);
   });
   (async () => { applyDarkMode((await storageGet('darkMode', false)) === '1'); })();
+
+  // ============ MODE DE LECTURE INCLUSIF ============
+  // Vue parallèle, éphémère (comme le zoom — non persistée) : ne touche
+  // jamais à blocksCache/postitsCache, se contente de les relire pour
+  // construire une page à plat, dans l'ordre naturel de lecture. Les
+  // dessins (canvas) sont volontairement exclus : ils n'ont pas de contenu
+  // textuel à afficher ni à vocaliser.
+  const inclusiveModeBtn = document.getElementById('inclusiveModeBtn');
+  const inclusiveOptionsPill = document.getElementById('inclusiveOptionsPill');
+  const inclusiveOverlay = document.getElementById('inclusiveOverlay');
+  const inclusiveReadingView = document.getElementById('inclusiveReadingView');
+  const inclusiveMain = document.getElementById('inclusiveMain');
+  const inclusiveDysBtn = document.getElementById('inclusiveDysBtn');
+  const inclusiveVoiceBtn = document.getElementById('inclusiveVoiceBtn');
+  const inclusiveCloseBtn = document.getElementById('inclusiveCloseBtn');
+  let inclusiveMode = false;
+  let inclusiveDys = false;
+
+  function buildInclusiveBlockNode(b){
+    if (b.type === 'image'){
+      const img = document.createElement('img');
+      img.src = b.src; img.alt = '';
+      return img;
+    }
+    const p = document.createElement('p');
+    p.innerHTML = b.text || ''; // déjà nettoyé par normalizeRichHtml() à la sortie d'édition
+    return p;
+  }
+  function buildInclusivePostitNode(data){
+    const p = document.createElement('p');
+    p.className = 'postit-entry';
+    const author = data.name ? escapeHTML(data.name) : (data.handle ? '@' + escapeHTML(data.handle) : 'Anonyme');
+    p.innerHTML = `<b>${author}</b> — ${escapeHTML(data.text || '')}`;
+    return p;
+  }
+  function buildInclusivePageArticle(s, side){
+    const article = document.createElement('article');
+    const h3 = document.createElement('h3');
+    h3.textContent = 'Page ' + (side === 'left' ? pageNumbers(s).leftLabel : pageNumbers(s).rightLabel);
+    article.appendChild(h3);
+
+    let hasContent = false;
+    // page de garde (double-page 1, côté gauche) : contenu de l'enveloppe
+    if (s === 1 && side === 'left' && (envelopeConfig.text || envelopeConfig.image)){
+      hasContent = true;
+      if (envelopeConfig.image){
+        const img = document.createElement('img');
+        img.src = envelopeConfig.image; img.alt = '';
+        article.appendChild(img);
+      }
+      if (envelopeConfig.text){
+        const p = document.createElement('p');
+        p.textContent = envelopeConfig.text;
+        article.appendChild(p);
+      }
+    }
+
+    // blocs (texte/image) et post-it de cette page, remis dans l'ordre
+    // naturel de lecture (haut en bas, puis gauche à droite en cas d'égalité)
+    const items = [];
+    blocksCache.filter(b => b.spread === s && b.side === side && (b.type === 'text' || b.type === 'image'))
+      .forEach(b => items.push({ y: b.relY, x: b.relX, node: buildInclusiveBlockNode(b) }));
+    postitsCache.filter(p => p.spread === s && p.side === side)
+      .forEach(p => items.push({ y: p.relY, x: p.relX, node: buildInclusivePostitNode(p) }));
+    items.sort((a, b) => (a.y - b.y) || (a.x - b.x));
+    items.forEach(it => { article.appendChild(it.node); hasContent = true; });
+
+    if (!hasContent){
+      const hint = document.createElement('p');
+      hint.className = 'empty-hint';
+      hint.textContent = 'Page vierge.';
+      article.appendChild(hint);
+    }
+    return article;
+  }
+  function buildInclusiveContent(){
+    inclusiveMain.innerHTML = '';
+    const frontArticle = document.createElement('article');
+    const frontH3 = document.createElement('h3'); frontH3.textContent = 'Couverture';
+    const frontP = document.createElement('p'); frontP.textContent = coverFront.title || "Carnet d'étude";
+    frontArticle.appendChild(frontH3); frontArticle.appendChild(frontP);
+    inclusiveMain.appendChild(frontArticle);
+
+    for (let s = 1; s <= totalSpreads; s++){
+      inclusiveMain.appendChild(buildInclusivePageArticle(s, 'left'));
+      inclusiveMain.appendChild(buildInclusivePageArticle(s, 'right'));
+    }
+
+    if (backCoverEnabled){
+      const backArticle = document.createElement('article');
+      const backH3 = document.createElement('h3'); backH3.textContent = 'Dos de couverture';
+      const backP = document.createElement('p'); backP.textContent = coverFront.title || '';
+      backArticle.appendChild(backH3); backArticle.appendChild(backP);
+      inclusiveMain.appendChild(backArticle);
+    }
+  }
+
+  function setInclusiveMode(on){
+    inclusiveMode = on;
+    document.body.classList.toggle('inclusive-mode', on);
+    inclusiveModeBtn.classList.toggle('active', on);
+    inclusiveModeBtn.setAttribute('aria-pressed', String(on));
+    inclusiveOptionsPill.classList.toggle('open', on);
+    if (on) buildInclusiveContent();
+    else stopInclusiveVoice();
+  }
+  inclusiveModeBtn.addEventListener('click', () => setInclusiveMode(!inclusiveMode));
+  inclusiveCloseBtn.addEventListener('click', () => setInclusiveMode(false));
+
+  inclusiveDysBtn.addEventListener('click', () => {
+    inclusiveDys = !inclusiveDys;
+    document.body.classList.toggle('inclusive-dys', inclusiveDys);
+    inclusiveDysBtn.classList.toggle('active', inclusiveDys);
+    inclusiveDysBtn.setAttribute('aria-pressed', String(inclusiveDys));
+  });
+
+  // ---- synthèse vocale : lit les <p> de #inclusiveMain (qui EST le <main>,
+  // chaque page étant un <article>) dans l'ordre du DOM, un par un, en
+  // surlignant (.is-reading) le paragraphe en cours ----
+  let inclusiveVoiceParas = [];
+  let inclusiveVoiceIndex = -1;
+  let inclusiveVoiceActive = false;
+  function stopInclusiveVoice(){
+    inclusiveVoiceActive = false;
+    try{ window.speechSynthesis.cancel(); } catch(e){}
+    inclusiveVoiceParas.forEach(p => p.classList.remove('is-reading'));
+    inclusiveVoiceParas = [];
+    inclusiveVoiceIndex = -1;
+    inclusiveVoiceBtn.classList.remove('active');
+    inclusiveVoiceBtn.setAttribute('aria-pressed', 'false');
+  }
+  function speakNextParagraph(){
+    if (!inclusiveVoiceActive) return;
+    if (inclusiveVoiceIndex >= 0 && inclusiveVoiceParas[inclusiveVoiceIndex]){
+      inclusiveVoiceParas[inclusiveVoiceIndex].classList.remove('is-reading');
+    }
+    inclusiveVoiceIndex += 1;
+    if (inclusiveVoiceIndex >= inclusiveVoiceParas.length){
+      stopInclusiveVoice();
+      return;
+    }
+    const el = inclusiveVoiceParas[inclusiveVoiceIndex];
+    const text = el.textContent.trim();
+    if (!text){ speakNextParagraph(); return; }
+    el.classList.add('is-reading');
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'fr-FR';
+    utter.onend = () => speakNextParagraph();
+    utter.onerror = () => speakNextParagraph();
+    window.speechSynthesis.speak(utter);
+  }
+  inclusiveVoiceBtn.addEventListener('click', () => {
+    if (!('speechSynthesis' in window)){
+      showToast("La synthèse vocale n'est pas prise en charge par ce navigateur.", true);
+      return;
+    }
+    if (inclusiveVoiceActive){ stopInclusiveVoice(); return; }
+    inclusiveVoiceParas = Array.from(inclusiveMain.querySelectorAll('article p'));
+    if (!inclusiveVoiceParas.length) return;
+    inclusiveVoiceActive = true;
+    inclusiveVoiceIndex = -1;
+    inclusiveVoiceBtn.classList.add('active');
+    inclusiveVoiceBtn.setAttribute('aria-pressed', 'true');
+    speakNextParagraph();
+  });
 
   zoomFloatBtn.addEventListener('click', () => {
     const open = zoomFloatPanel.classList.toggle('open');
