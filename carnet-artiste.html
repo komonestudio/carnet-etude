@@ -216,7 +216,18 @@
       inset 0 0 0 1px rgba(255,255,255,.06);
     transform-origin: center center;
     transition: transform .18s ease;
+    /* désactive les gestes tactiles natifs du navigateur (zoom/pan/double-
+       tap) sur toute la zone du carnet : sans ça, le pincement à deux
+       doigts serait capté À LA FOIS par le zoom natif de la page ET par
+       setupPinchZoom() plus bas, provoquant un comportement erratique sur
+       mobile. Les interactions JS (swipe de page, glisser un post-it/bloc)
+       ne dépendent d'aucun comportement tactile natif, donc rien ne casse. */
+    touch-action: none;
   }
+  /* désactive la transition CSS pendant un pincement actif (voir
+     setupPinchZoom()) : sans ça, chaque mise à jour tente de s'animer sur
+     .18s, créant un effet de retard/élastique perceptible au doigt. */
+  .book-cover.panning{ transition:none; }
   .book-cover::before{
     /* liseré / tranche visible en haut, texture cuir subtile */
     content:"";
@@ -315,8 +326,13 @@
     will-change:transform;
   }
   body.single-page-mode .book-scale-wrap{
-    width:100%;
+    /* largeur fixée à celle du book-viewport seul (page + débordement) :
+       les marges ne participent plus à ce calcul (voir .margin-zone
+       ci-dessous, positionnées en absolu) — le carnet reste donc toujours
+       centré par .stage, quelle que soit la marge active/masquée. */
+    width: calc(var(--page-vw) + var(--peek-vw));
     justify-content:center;
+    position:relative;
   }
 
   /* ---------- Le carnet — format A5 (ratio 148×210mm, soit ≈1:1.414) ---------- */
@@ -811,7 +827,10 @@
   /* en mode « une page à la fois », une seule marge est visible : celle du
      côté extérieur de la page actuellement lue. L'autre n'est pas masquée
      en display:none (pour que ses coordonnées getBoundingClientRect restent
-     valides pour le placement des post-it) mais réduite totalement à 0. */
+     valides pour le placement des post-it) mais rendue invisible et
+     inerte — jamais via une largeur à 0 (voir plus bas pourquoi, en mode
+     mobile) qui changerait la largeur totale de la rangée et ferait
+     recentrer, donc "sauter", tout le carnet à chaque changement de page. */
   .margin-zone.mz-collapsed{
     width:0;
     opacity:0;
@@ -819,10 +838,22 @@
     overflow:hidden;
   }
   body.single-page-mode .margin-zone{
+    /* sorties du flux flex normal : chaque marge est ancrée juste à côté du
+       book-scale-wrap (dont la largeur ne dépend plus que du book-viewport,
+       voir plus haut), donc sa présence/absence ne modifie plus jamais le
+       centrage du carnet. Largeur constante en toute circonstance — y
+       compris masquée (voir .mz-collapsed ci-dessous, qui ne touche plus
+       qu'à l'opacité en mode mobile). */
+    position:absolute;
+    top:0;
     width: var(--margin-vw);
     height: calc(var(--page-vw) * 210 / 148);
   }
-  body.single-page-mode .margin-zone.mz-collapsed{ width:0; }
+  body.single-page-mode #marginLeft{ right:100%; }
+  body.single-page-mode #marginRight{ left:100%; }
+  /* la marge masquée garde sa largeur (contrairement au bureau) : seule son
+     opacité change, pour ne jamais faire varier la largeur du book-scale-wrap */
+  body.single-page-mode .margin-zone.mz-collapsed{ width: var(--margin-vw); }
   .page.placing-target{ box-shadow: inset 0 0 0 1.5px rgba(251,133,0,.35); }
 
   body.placing-mode .margin-zone,
@@ -6681,6 +6712,7 @@
       if (e.target.closest('.postit') || e.target.closest('.content-block')) return;
       pinching = true;
       uiDragActive = true;
+      bookCover.classList.add('panning'); // désactive la transition CSS : suivi instantané des doigts, sans effet élastique
       startDist = touchDist(e.touches);
       startZoom = bookZoom;
       const mid = touchMid(e.touches);
@@ -6703,6 +6735,7 @@
       if (!pinching || e.touches.length >= 2) return; // encore ≥2 doigts : le geste continue
       pinching = false;
       uiDragActive = false;
+      bookCover.classList.remove('panning');
     }
     bookCover.addEventListener('touchend', endPinch, { passive: true });
     bookCover.addEventListener('touchcancel', endPinch, { passive: true });
