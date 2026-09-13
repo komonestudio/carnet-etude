@@ -217,8 +217,6 @@
     transform-origin: center center;
     transition: transform .18s ease;
   }
-  body.zoom-tool-active .book-cover{ cursor: grab; touch-action:none; }
-  .book-cover.panning{ cursor: grabbing; transition:none; }
   .book-cover::before{
     /* liseré / tranche visible en haut, texture cuir subtile */
     content:"";
@@ -882,14 +880,6 @@
   body.dark-mode .tools-dock .zoom-float-btn:hover{ background: #F4F5F5; color: #42484C; }
   body.dark-mode .tools-dock .zoom-float-btn.active{ color:#42484C; background: #F4F5F5; }
   .tools-dock .zoom-float-btn svg{ width:18px; height:18px; color:currentColor; }
-  .zoom-float-panel{
-    position:fixed; top:100px; left:16px; z-index:55;
-    width:172px; background: rgba(255,255,255,.65); border:1px solid rgba(38,35,25,.12);
-    backdrop-filter: blur(16px); border-radius:18px; padding:14px;
-    box-shadow: 0 20px 44px rgba(20,17,10,.22), 0 3px 10px rgba(20,17,10,.14); display:none;
-    font-family:'Inter', sans-serif;
-  }
-  .zoom-float-panel.open{ display:block; }
 
   /* ============ MODE DE LECTURE INCLUSIF ============ */
   /* dock tournesol : séparé du dock zoom/mode sombre (haut gauche), ancré en
@@ -1278,8 +1268,7 @@
   body.preview-mode .undo-redo-bar,
   body.preview-mode .visitor-counter,
   body.preview-mode .new-notebook-btn,
-  body.preview-mode .tools-dock,
-  body.preview-mode .zoom-float-panel{ display:none !important; }
+  body.preview-mode .tools-dock{ display:none !important; }
   body.artist-mode.preview-mode .public-toolbar{ display:flex; }
   body.preview-mode .content-block{ pointer-events:none !important; }
   body.preview-mode .content-block:hover,
@@ -1329,7 +1318,6 @@
   body.dark-mode .page-nav__arrow,
   body.dark-mode .visitor-counter,
   body.dark-mode .writing-indicator,
-  body.dark-mode .zoom-float-panel,
   body.dark-mode .artist-dock,
   body.dark-mode .tools-dock,
   body.dark-mode .public-toolbar,
@@ -1911,13 +1899,9 @@
     }
     .add-postit-btn{ bottom:20px; right:18px; width:50px; height:50px; }
 
-    /* outil zoom + mode sombre : déplacés en haut à gauche sur mobile (zone
-       libre, l'ancien sélecteur de carnet n'y est plus affiché) — la bande
-       du bas est déjà occupée par le dock/la nav/la barre publique, et un
-       ancrage à droite y entrait en collision avec elles (page-nav en mode
-       artiste, ou barre publique à 4 icônes, toutes deux centrées et assez
-       larges pour rejoindre le bord droit sur un écran étroit). */
-    .zoom-float-panel{ top:100px; left:16px; bottom:auto; right:auto; }
+    /* mode sombre : reste ancré en haut à gauche sur mobile (zone libre,
+       l'ancien sélecteur de carnet n'y est plus affiché). Le zoom n'a plus
+       de panneau à repositionner ici (clavier + pinch, voir le script). */
 
     /* Dock allégé sur mobile : Enveloppe, moins fréquente, migre
        dans le menu « + » (raccourci ajouté en haut de panelPlus) pour
@@ -2628,11 +2612,12 @@
     </svg>
   </button>
 
-  <!-- ============ Dock Zoom + Mode sombre : fixe en haut à gauche, identique dans les deux modes ============ -->
+  <!-- ============ Dock Zoom + Mode sombre : fixe en haut à gauche, identique dans les deux modes ============
+       Le zoom n'a désormais plus de bouton/panneau dédié : il se pilote au
+       clavier (+/-/0, Ctrl+flèches) et au pincement tactile directement sur
+       le carnet — voir setupPinchZoom() dans le script. Le dock ne porte
+       donc plus que le mode sombre. -->
   <div class="tools-dock">
-    <button class="zoom-float-btn" id="zoomFloatBtn" type="button" aria-label="Zoom" data-tooltip="Zoomer / déplacer la vue">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M9 11h4M11 9v4"/></svg>
-    </button>
     <button class="zoom-float-btn" id="darkModeBtn" type="button" aria-label="Mode sombre" data-tooltip="Mode sombre" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
     </button>
@@ -2683,20 +2668,6 @@
       </button>
       <main id="inclusiveMain" aria-label="Contenu du carnet en lecture accessible"></main>
     </div>
-  </div>
-
-  <div class="zoom-float-panel" id="zoomFloatPanel">
-    <div class="tool-row">
-      <button class="tool-btn" id="zoomOutBtn" type="button" aria-label="Zoom arrière" title="Zoom arrière">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/></svg>
-      </button>
-      <button class="tool-btn" id="zoomInBtn" type="button" aria-label="Zoom avant" title="Zoom avant">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg>
-      </button>
-    </div>
-    <div style="text-align:center; font-family:'Inter', sans-serif; font-size:12.5px; font-weight:700; color: var(--ink); margin:10px 0 2px;" id="zoomPercent">100%</div>
-    <button class="accordion-action" id="zoomResetBtn" type="button" style="margin-top:8px;">Réinitialiser la vue</button>
-    <div class="tool-hint">N'affecte que le carnet, pas le fond du site. Maintenez le clic (ou le doigt) sur le carnet et déplacez pour ajuster votre point de vue.</div>
   </div>
 
   <!-- ============ BARRE PUBLIQUE : Carnet + Post-it, flottante, bas centre ============ -->
@@ -4329,11 +4300,6 @@
       document.body.classList.remove('placing-mode');
       if (previewMode) setPreviewMode(false);
     }
-    // le zoom est commun aux deux modes, mais on referme son panneau et le
-    // mini-dropdown de la barre publique à chaque bascule pour repartir propre
-    zoomFloatPanel.classList.remove('open');
-    document.body.classList.remove('zoom-tool-active');
-    zoomFloatBtn.classList.remove('active');
     publicCarnetDropdown.classList.remove('open');
     renderPostitsForSpread(); // ré-attache les X de suppression selon le mode
     updateNavButtons();
@@ -4799,7 +4765,6 @@
   }
   const resetArtistDockPos = makeDraggableDock(artistDock);
   const resetPublicToolbarPos = makeDraggableDock(document.getElementById('publicToolbar'));
-  const resetZoomPanelPos = makeDraggableDock(document.getElementById('zoomFloatPanel'));
 
   // ---- reclamp au redimensionnement : un panneau/dock glissé près d'un
   // bord peut se retrouver hors écran si la fenêtre est ensuite réduite (ou
@@ -4815,7 +4780,7 @@
     if (Math.abs(nx - rect.left) > 0.5) el.style.left = nx + 'px';
     if (Math.abs(ny - rect.top) > 0.5) el.style.top = ny + 'px';
   }
-  const FLOATING_DRAGGABLE_IDS = ['artistPanel', 'blockPanel', 'postitPanel', 'artistDock', 'publicToolbar', 'zoomFloatPanel'];
+  const FLOATING_DRAGGABLE_IDS = ['artistPanel', 'blockPanel', 'postitPanel', 'artistDock', 'publicToolbar'];
   window.addEventListener('resize', debounce(() => {
     FLOATING_DRAGGABLE_IDS.forEach(id => reclampFloatingElement(document.getElementById(id)));
   }, 120));
@@ -6460,23 +6425,19 @@
     inp.addEventListener('change', () => { shapeBorderUndoPending = false; });
   });
 
-  // ============ ZOOM : nouveau rôle, flottant en bas à droite, commun aux
-  // deux modes ============
-  // N'affecte que le carnet (.book-cover) — jamais le fond du site ni le dock.
-  // Éphémère : propre à la session de consultation, non sauvegardé.
+  // ============ ZOOM : clavier + pincement tactile (pinch-to-zoom) ============
+  // Plus de bouton/panneau dédié : le zoom se pilote directement (+ / - / 0,
+  // Ctrl+flèches au clavier ; pincement à deux doigts sur le carnet en
+  // tactile — voir setupPinchZoom() plus bas). N'affecte que .book-cover,
+  // jamais le fond du site ni les docks/panneaux flottants, qui vivent hors
+  // de cet élément. Éphémère : propre à la session de consultation, non
+  // sauvegardé.
   const bookCover = document.getElementById('bookCover');
-  const zoomFloatBtn = document.getElementById('zoomFloatBtn');
-  const zoomFloatPanel = document.getElementById('zoomFloatPanel');
-  const zoomInBtn = document.getElementById('zoomInBtn');
-  const zoomOutBtn = document.getElementById('zoomOutBtn');
-  const zoomResetBtn = document.getElementById('zoomResetBtn');
-  const zoomPercentEl = document.getElementById('zoomPercent');
   const ZOOM_MIN = 0.6, ZOOM_MAX = 2.4, ZOOM_STEP = 0.15;
   let bookZoom = 1, bookPanX = 0, bookPanY = 0;
 
   function applyBookTransform(){
     bookCover.style.transform = `translate(${bookPanX}px, ${bookPanY}px) scale(${bookZoom})`;
-    zoomPercentEl.textContent = Math.round(bookZoom * 100) + '%';
   }
   function setZoom(z){
     bookZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
@@ -6678,44 +6639,74 @@
     speakNextParagraph();
   });
 
-  zoomFloatBtn.addEventListener('click', () => {
-    const open = zoomFloatPanel.classList.toggle('open');
-    zoomFloatBtn.classList.toggle('active', open);
-    document.body.classList.toggle('zoom-tool-active', open);
-    if (!open && typeof resetZoomPanelPos === 'function') resetZoomPanelPos();
-  });
-  zoomInBtn.addEventListener('click', () => setZoom(bookZoom + ZOOM_STEP));
-  zoomOutBtn.addEventListener('click', () => setZoom(bookZoom - ZOOM_STEP));
-  zoomResetBtn.addEventListener('click', () => {
-    bookZoom = 1; bookPanX = 0; bookPanY = 0;
-    applyBookTransform();
+  // ---- clavier : + / - / 0 pour zoomer ; Ctrl (ou Cmd) + flèches pour
+  // déplacer la vue. Le Ctrl+flèche (plutôt que flèche seule) évite tout
+  // conflit avec la navigation de page (flèches seules, voir goNext/goPrev)
+  // et avec le déplacement au clavier d'un bloc sélectionné (même touches,
+  // mais sans Ctrl, sur l'élément .content-block lui-même). ----
+  const ZOOM_PAN_STEP = 45;
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (e.target.isContentEditable || tag === 'input' || tag === 'textarea') return;
+    if (e.ctrlKey || e.metaKey){
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+      e.preventDefault();
+      if (e.key === 'ArrowLeft') bookPanX += ZOOM_PAN_STEP;
+      else if (e.key === 'ArrowRight') bookPanX -= ZOOM_PAN_STEP;
+      else if (e.key === 'ArrowUp') bookPanY += ZOOM_PAN_STEP;
+      else if (e.key === 'ArrowDown') bookPanY -= ZOOM_PAN_STEP;
+      applyBookTransform();
+      return;
+    }
+    if (e.key === '+' || e.key === '='){ e.preventDefault(); setZoom(bookZoom + ZOOM_STEP); }
+    else if (e.key === '-' || e.key === '_'){ e.preventDefault(); setZoom(bookZoom - ZOOM_STEP); }
+    else if (e.key === '0'){ e.preventDefault(); bookZoom = 1; bookPanX = 0; bookPanY = 0; applyBookTransform(); }
   });
 
-  // déplacement de la vue : maintenir le clic (ou le doigt) sur le carnet
-  // (hors post-it / blocs) et glisser, tant que le panneau Zoom est ouvert
-  let bookPanning = false, panStartX = 0, panStartY = 0, panOriginX = 0, panOriginY = 0;
-  bookCover.addEventListener('pointerdown', (e) => {
-    if (!zoomFloatPanel.classList.contains('open')) return;
-    if (e.target.closest('.postit') || e.target.closest('.content-block')) return;
-    bookPanning = true;
-    uiDragActive = true;
-    bookCover.classList.add('panning');
-    panStartX = e.clientX; panStartY = e.clientY;
-    panOriginX = bookPanX; panOriginY = bookPanY;
-    e.preventDefault();
-  });
-  document.addEventListener('pointermove', (e) => {
-    if (!bookPanning) return;
-    bookPanX = panOriginX + (e.clientX - panStartX);
-    bookPanY = panOriginY + (e.clientY - panStartY);
-    applyBookTransform();
-  });
-  document.addEventListener('pointerup', () => {
-    if (!bookPanning) return;
-    bookPanning = false;
-    uiDragActive = false;
-    bookCover.classList.remove('panning');
-  });
+  // ---- pincement tactile (pinch-to-zoom) : deux doigts posés sur le carnet
+  // ajustent le zoom (écart entre les doigts) et déplacent la vue (point
+  // milieu des deux doigts) simultanément — jamais le fond du site ni les
+  // docks/panneaux flottants, hors de .book-cover. Le swipe de navigation de
+  // page (un seul doigt, voir setupSwipeNavigation) se désactive de
+  // lui-même dès qu'un second doigt est posé, aucun conflit à gérer. ----
+  (function setupPinchZoom(){
+    let pinching = false;
+    let startDist = 0, startZoom = 1, startMidX = 0, startMidY = 0, startPanX = 0, startPanY = 0;
+
+    function touchDist(t){ return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+    function touchMid(t){ return { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 }; }
+
+    bookCover.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 2) return;
+      if (e.target.closest('.postit') || e.target.closest('.content-block')) return;
+      pinching = true;
+      uiDragActive = true;
+      startDist = touchDist(e.touches);
+      startZoom = bookZoom;
+      const mid = touchMid(e.touches);
+      startMidX = mid.x; startMidY = mid.y;
+      startPanX = bookPanX; startPanY = bookPanY;
+    }, { passive: true });
+
+    bookCover.addEventListener('touchmove', (e) => {
+      if (!pinching || e.touches.length !== 2) return;
+      e.preventDefault();
+      const dist = touchDist(e.touches);
+      const mid = touchMid(e.touches);
+      bookZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, startZoom * (dist / startDist)));
+      bookPanX = startPanX + (mid.x - startMidX);
+      bookPanY = startPanY + (mid.y - startMidY);
+      applyBookTransform();
+    }, { passive: false });
+
+    function endPinch(e){
+      if (!pinching || e.touches.length >= 2) return; // encore ≥2 doigts : le geste continue
+      pinching = false;
+      uiDragActive = false;
+    }
+    bookCover.addEventListener('touchend', endPinch, { passive: true });
+    bookCover.addEventListener('touchcancel', endPinch, { passive: true });
+  })();
 
   // ============ MODE ARTISTE : panneau « + » (autres carnets / arrière-plan / post-it / lien) ============
   artistPanel.querySelectorAll('.accordion-row[data-accordion]').forEach(row => {
@@ -7826,7 +7817,7 @@
     const IDLE_MS = 3500;
     let idleTimer = null;
     function anyPanelOpen(){
-      return !!document.querySelector('.artist-panel.open, .postit-panel.open, .zoom-float-panel.open, .comment-thread.open, .new-notebook-modal.open, .public-carnet-dropdown.open, .crop-toolbar.open, .notebook-dropdown.open');
+      return !!document.querySelector('.artist-panel.open, .postit-panel.open, .comment-thread.open, .new-notebook-modal.open, .public-carnet-dropdown.open, .crop-toolbar.open, .notebook-dropdown.open');
     }
     function scheduleHide(){
       clearTimeout(idleTimer);
