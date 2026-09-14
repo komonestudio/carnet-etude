@@ -748,27 +748,13 @@
     color: rgba(38,35,25,.4); min-width:60px; text-align:center;
   }
 
-  /* ---------- Flip 3D ---------- */
-  .flipper{
-    position:absolute; top:0; width:50%; height:100%;
-    transform-style:preserve-3d;
-    transition: transform .85s cubic-bezier(.45,.05,.15,1);
-    pointer-events:none; z-index:10; display:none;
-  }
-  .flipper.active{ display:block; }
-  .flip-right{ left:50%; transform-origin:left center; }
-  .flip-left{ left:0; transform-origin:right center; }
-  .flip-face{
-    position:absolute; inset:0; backface-visibility:hidden;
-    background-color: var(--paper);
-    box-shadow: 0 10px 36px rgba(20,17,10,.26);
-  }
-  .flip-face.back{ transform: rotateY(180deg); background-color: var(--paper-2); }
-  .flip-right.flipping{ transform: rotateY(-180deg); }
-  .flip-left.flipping{ transform: rotateY(180deg); }
+  /* Le feuilletage 3D (.flipper) a été retiré : toutes les transitions de
+     page utilisent désormais le même fondu simple que l'ouverture/fermeture
+     de couverture (voir .book-cover.cover-transition), plus stable sur
+     mobile — voir flip() dans le script. */
 
   @media (prefers-reduced-motion: reduce){
-    .flipper, .notebook-dropdown, .chevron{ transition:none !important; }
+    .notebook-dropdown, .chevron{ transition:none !important; }
   }
 
   /* La mise à l'échelle globale (.book-scale-wrap, voir fitBookToViewport())
@@ -2616,15 +2602,6 @@
 
               <div class="page-number" id="numRight">3</div>
             </div>
-
-            <div class="flipper flip-right" id="flipRight">
-              <div class="flip-face front"></div>
-              <div class="flip-face back"></div>
-            </div>
-            <div class="flipper flip-left" id="flipLeft">
-              <div class="flip-face front"></div>
-              <div class="flip-face back"></div>
-            </div>
           </div>
         </div>
         <div class="book-elastic" id="bookElastic" aria-hidden="true"></div>
@@ -3120,8 +3097,6 @@
   const nextBtn = document.getElementById('nextBtn');
   const addPageBtn = document.getElementById('addPageBtn');
   const deletePageBtn = document.getElementById('deletePageBtn');
-  const flipRight = document.getElementById('flipRight');
-  const flipLeft = document.getElementById('flipLeft');
   const entriesLeft = document.getElementById('entriesLeft');
   const entriesRight = document.getElementById('entriesRight');
   const bookViewport = document.getElementById('bookViewport');
@@ -3417,61 +3392,30 @@
     if (direction === 'next' && spread >= maxSpread()) return;
     if (direction === 'prev' && spread <= 0) return;
 
-    const from = spread;
     const to = direction === 'next' ? spread + 1 : spread - 1;
-    // Transition vers/depuis une couverture (livre qu'on ouvre/ferme) : pas
-    // de feuilletage 3D (celui-ci anime les pages intérieures, masquées
-    // quand une couverture est affichée) — un simple fondu suffit.
-    if (!isInterior(from) || !isInterior(to)){
-      animating = true;
-      bookCover.classList.add('cover-transition');
-      // singlePageSide DOIT être mis à jour avant renderSpread() : sinon son
-      // appel interne à updateSinglePageView() applique un instant l'ANCIEN
-      // côté (mauvaise marge/translation), corrigé une fraction de seconde
-      // plus tard — ce double rendu produisait un sursaut visible du carnet
-      // juste après la transition, sur mobile.
-      if (singlePageMode && pendingSideAfterFlip && isInterior(to)){
-        singlePageSide = pendingSideAfterFlip;
-      }
-      pendingSideAfterFlip = null;
-      spread = to;
-      renderSpread(spread); // couvre déjà postits/blocs/nav/marges pour ce spread, inutile de les rappeler après
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          bookCover.classList.remove('cover-transition');
-          animating = false;
-        }, 260);
-      });
-      return;
-    }
-
+    // Feuilletage 3D désactivé (trop de sursauts visuels à corriger sur
+    // mobile pour un bénéfice cosmétique limité) : toute transition, qu'elle
+    // implique une couverture ou une double-page intérieure, utilise
+    // désormais le même fondu simple.
     animating = true;
-    const el = direction === 'next' ? flipRight : flipLeft;
-    el.classList.add('active');
-    void el.offsetWidth;
-    el.classList.add('flipping');
-
-    let done = false;
-    function finish(){
-      if (done) return;
-      done = true;
-      // même correctif que ci-dessus : le côté doit être figé avant le rendu,
-      // pas après, pour éviter le sursaut visuel au moment où le feuilletage
-      // 3D se termine et révèle le contenu réel en dessous.
-      if (singlePageMode && pendingSideAfterFlip){
-        singlePageSide = pendingSideAfterFlip;
-      }
-      pendingSideAfterFlip = null;
-      spread = to;
-      renderSpread(spread); // couvre déjà postits/blocs/nav/marges pour ce spread, inutile de les rappeler après
-      el.classList.remove('flipping');
-      el.classList.remove('active');
-      animating = false;
+    bookCover.classList.add('cover-transition');
+    // singlePageSide DOIT être mis à jour avant renderSpread() : sinon son
+    // appel interne à updateSinglePageView() applique un instant l'ANCIEN
+    // côté (mauvaise marge/translation), corrigé une fraction de seconde
+    // plus tard — ce double rendu produisait un sursaut visible du carnet
+    // juste après la transition, sur mobile.
+    if (singlePageMode && pendingSideAfterFlip && isInterior(to)){
+      singlePageSide = pendingSideAfterFlip;
     }
-    el.addEventListener('transitionend', finish, { once:true });
-    // filet de sécurité : si l'événement de fin de transition ne se déclenche
-    // pas (changement d'onglet, clics rapides…), on force la fin proprement
-    setTimeout(finish, 950);
+    pendingSideAfterFlip = null;
+    spread = to;
+    renderSpread(spread); // couvre déjà postits/blocs/nav/marges pour ce spread, inutile de les rappeler après
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        bookCover.classList.remove('cover-transition');
+        animating = false;
+      }, 260);
+    });
   }
 
   // Navigation unifiée page-par-page : sur grand écran, va directement à la
