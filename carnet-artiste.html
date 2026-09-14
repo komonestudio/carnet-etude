@@ -3425,22 +3425,21 @@
     if (!isInterior(from) || !isInterior(to)){
       animating = true;
       bookCover.classList.add('cover-transition');
+      // singlePageSide DOIT être mis à jour avant renderSpread() : sinon son
+      // appel interne à updateSinglePageView() applique un instant l'ANCIEN
+      // côté (mauvaise marge/translation), corrigé une fraction de seconde
+      // plus tard — ce double rendu produisait un sursaut visible du carnet
+      // juste après la transition, sur mobile.
+      if (singlePageMode && pendingSideAfterFlip && isInterior(to)){
+        singlePageSide = pendingSideAfterFlip;
+      }
+      pendingSideAfterFlip = null;
       spread = to;
-      renderSpread(spread);
+      renderSpread(spread); // couvre déjà postits/blocs/nav/marges pour ce spread, inutile de les rappeler après
       requestAnimationFrame(() => {
         setTimeout(() => {
           bookCover.classList.remove('cover-transition');
           animating = false;
-          if (singlePageMode && pendingSideAfterFlip && isInterior(spread)){
-            singlePageSide = pendingSideAfterFlip;
-            pendingSideAfterFlip = null;
-            updateSinglePageView();
-            renderPostitsForSpread();
-            renderBlocksForSpread();
-            updateNavButtons();
-          } else {
-            pendingSideAfterFlip = null;
-          }
         }, 260);
       });
       return;
@@ -3456,19 +3455,18 @@
     function finish(){
       if (done) return;
       done = true;
+      // même correctif que ci-dessus : le côté doit être figé avant le rendu,
+      // pas après, pour éviter le sursaut visuel au moment où le feuilletage
+      // 3D se termine et révèle le contenu réel en dessous.
+      if (singlePageMode && pendingSideAfterFlip){
+        singlePageSide = pendingSideAfterFlip;
+      }
+      pendingSideAfterFlip = null;
       spread = to;
-      renderSpread(spread);
+      renderSpread(spread); // couvre déjà postits/blocs/nav/marges pour ce spread, inutile de les rappeler après
       el.classList.remove('flipping');
       el.classList.remove('active');
       animating = false;
-      if (singlePageMode && pendingSideAfterFlip){
-        singlePageSide = pendingSideAfterFlip;
-        pendingSideAfterFlip = null;
-        updateSinglePageView();
-        renderPostitsForSpread();
-        renderBlocksForSpread();
-        updateNavButtons();
-      }
     }
     el.addEventListener('transitionend', finish, { once:true });
     // filet de sécurité : si l'événement de fin de transition ne se déclenche
