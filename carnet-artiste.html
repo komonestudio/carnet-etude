@@ -898,43 +898,14 @@
   body.dark-mode .tools-dock .zoom-float-btn.active{ color:#42484C; background: #F4F5F5; }
   .tools-dock .zoom-float-btn svg{ width:18px; height:18px; color:currentColor; }
 
-  /* ============ MODE DE LECTURE INCLUSIF ============ */
-  /* dock tournesol : séparé du dock zoom/mode sombre (haut gauche), ancré en
-     haut à DROITE — ne doit jamais chevaucher .public-toolbar (centrée
-     verticalement à droite, voir plus bas), d'où un ancrage haut plutôt que
-     centré. Même recette visuelle que .tools-dock (pilule verre translucide). */
-  .inclusive-dock{
-    position:fixed; top:16px; right:16px; z-index:56;
-    display:flex; flex-direction:column; align-items:center; gap:4px;
-    background: rgba(255,255,255,.65);
-    border:1px solid rgba(38,35,25,.12);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius:999px; padding:10px 8px;
-    box-shadow: 0 20px 44px rgba(20,17,10,.22), 0 3px 10px rgba(20,17,10,.14);
-  }
-  body.dark-mode .inclusive-dock{
-    background: rgba(66,72,76,.88);
-    border-color: rgba(244,245,245,.18);
-  }
-  .inclusive-dock .inclusive-btn{
-    position:static; width:40px; height:40px; border-radius:50%;
-    background:transparent; border:none; cursor:pointer;
-    color: var(--ink);
-    display:flex; align-items:center; justify-content:center;
-    transition: background .15s ease, color .15s ease;
-    box-shadow:none;
-  }
-  .inclusive-dock .inclusive-btn:hover{ background: rgba(38,35,25,.08); }
-  .inclusive-dock .inclusive-btn.active{ color: var(--esprit); background: rgba(251,133,0,.14); }
-  body.dark-mode .inclusive-dock .inclusive-btn:hover{ background: #F4F5F5; color: #42484C; }
-  body.dark-mode .inclusive-dock .inclusive-btn.active{ color:#42484C; background: #F4F5F5; }
-  .inclusive-dock .inclusive-btn svg{ width:18px; height:18px; }
-
-  /* sous-pilule DYS / Voix : apparaît sous le dock tournesol quand le mode
-     est actif, alignée sur le même bord droit, verticale (façon .tools-dock) */
+  /* ============ MODE DE LECTURE INCLUSIF (mode lecture seule) ============ */
+  /* sous-pilule DYS / Voix : apparaît une fois le mode lecture seule activé
+     via #publicSilentBtn (barre publique) — positionnée au même endroit que
+     le mini-menu "changer de carnet" (.public-carnet-dropdown), à gauche de
+     la barre publique, puisque les deux ne sont jamais ouverts en même
+     temps. Verticale sur desktop, comme .public-toolbar. */
   .inclusive-options-pill{
-    position:fixed; top:74px; right:16px; z-index:58;
+    position:fixed; top:50%; right:92px; transform:translateY(-50%); z-index:58;
     display:none; flex-direction:column; align-items:center; gap:4px;
     background: rgba(255,255,255,.65);
     border:1px solid rgba(38,35,25,.12);
@@ -1046,8 +1017,6 @@
   }
   .inclusive-close-btn svg{ width:14px; height:14px; }
   @media (max-width: 520px){
-    .inclusive-dock{ top:12px; right:12px; }
-    .inclusive-options-pill{ top:70px; right:12px; }
     .inclusive-page{ padding:38px 22px 50px; }
   }
 
@@ -1396,11 +1365,9 @@
   }
   .layer-toolbar button:hover{ background: rgba(251,133,0,.12); }
   .layer-toolbar button svg{ width:15px; height:15px; }
-  /* ---- mode lecture silencieuse (public) : masque les post-it et
-     l'indicateur d'écriture pour ne laisser voir que le contenu de
-     l'artiste (texte/image/forme/dessin, couvertures) ---- */
-  body.silent-reading .postit,
-  body.silent-reading .writing-indicator{ display:none !important; }
+  /* l'ancien "mode lecture silencieuse" (masquer les post-it) a été fusionné
+     dans le mode lecture seule (voir #publicSilentBtn / setInclusiveMode) :
+     plus de classe body.silent-reading séparée. */
 
   /* jauge visiteurs — centrée en haut, mode artiste uniquement */
   .visitor-counter{
@@ -1913,6 +1880,11 @@
     .public-carnet-dropdown{
       top:auto; right:auto; left:50%; bottom:154px;
       transform:translateX(-50%);
+    }
+    .inclusive-options-pill{
+      top:auto; right:auto; left:50%; bottom:154px;
+      transform:translateX(-50%);
+      flex-direction:row;
     }
     .add-postit-btn{ bottom:20px; right:18px; width:50px; height:50px; }
 
@@ -2631,28 +2603,9 @@
     </button>
   </div>
 
-  <!-- ============ Dock Mode de lecture inclusif : indépendant, fixe en haut à
-       droite (ne doit jamais chevaucher .public-toolbar, centrée
-       verticalement sur le même bord — voir plus bas) ============ -->
-  <div class="inclusive-dock">
-    <button class="inclusive-btn" id="inclusiveModeBtn" type="button" aria-label="Activer le mode lecture accessible" data-tooltip="Mode lecture accessible" aria-pressed="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <g>
-          <ellipse cx="12" cy="5.4" rx="1.7" ry="3"/>
-          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(45 12 12)"/>
-          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(90 12 12)"/>
-          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(135 12 12)"/>
-          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(180 12 12)"/>
-          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(225 12 12)"/>
-          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(270 12 12)"/>
-          <ellipse cx="12" cy="5.4" rx="1.7" ry="3" transform="rotate(315 12 12)"/>
-        </g>
-        <circle cx="12" cy="12" r="3.1" fill="currentColor" stroke="none"/>
-        <path d="M12 21.5v-6" stroke-linecap="round"/>
-        <path d="M12 18.5c-1.4-.3-2.2-1.2-2.4-2.4" stroke-linecap="round"/>
-      </svg>
-    </button>
-  </div>
+  <!-- ============ Sous-pilule DYS / Voix : apparaît une fois le mode lecture
+       seule activé via le bouton dédié de la barre publique (voir
+       #publicSilentBtn) — plus de dock/bouton séparé pour ça. ============ -->
   <div class="inclusive-options-pill" id="inclusiveOptionsPill">
     <button type="button" id="inclusiveDysBtn" class="inclusive-dys-btn" aria-label="Activer la police DYS" aria-pressed="false" data-tooltip="Police DYS">DYS</button>
     <button type="button" id="inclusiveVoiceBtn" aria-label="Lire le carnet à voix haute" aria-pressed="false" data-tooltip="Lecture à voix haute">
@@ -2686,7 +2639,7 @@
     <button class="dock-btn" id="publicPostitBtn" type="button" aria-label="Déposer un post-it" data-tooltip="Déposer un post-it">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11l3 3v13H5V4Z"/><path d="M16 4v3h3"/></svg>
     </button>
-    <button class="dock-btn" id="publicSilentBtn" type="button" aria-label="Lecture silencieuse" data-tooltip="Lecture silencieuse (masquer les post-it)" aria-pressed="false">
+    <button class="dock-btn" id="publicSilentBtn" type="button" aria-label="Mode lecture seule" data-tooltip="Mode lecture seule" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
     </button>
   </div>
@@ -4254,8 +4207,7 @@
     if (typeof resetArtistDockPos === 'function') resetArtistDockPos();
     if (typeof resetPublicToolbarPos === 'function') resetPublicToolbarPos();
     if (artistMode){
-      document.body.classList.remove('silent-reading');
-      document.getElementById('publicSilentBtn')?.classList.remove('active');
+      setInclusiveMode(false);
     }
     if (!artistMode){
       setDrawTool(null);
@@ -6452,7 +6404,6 @@
   // construire une page à plat, dans l'ordre naturel de lecture. Les
   // dessins (canvas) sont volontairement exclus : ils n'ont pas de contenu
   // textuel à afficher ni à vocaliser.
-  const inclusiveModeBtn = document.getElementById('inclusiveModeBtn');
   const inclusiveOptionsPill = document.getElementById('inclusiveOptionsPill');
   const inclusiveOverlay = document.getElementById('inclusiveOverlay');
   const inclusiveReadingView = document.getElementById('inclusiveReadingView');
@@ -6545,13 +6496,12 @@
   function setInclusiveMode(on){
     inclusiveMode = on;
     document.body.classList.toggle('inclusive-mode', on);
-    inclusiveModeBtn.classList.toggle('active', on);
-    inclusiveModeBtn.setAttribute('aria-pressed', String(on));
+    publicSilentBtn.classList.toggle('active', on);
+    publicSilentBtn.setAttribute('aria-pressed', String(on));
     inclusiveOptionsPill.classList.toggle('open', on);
     if (on) buildInclusiveContent();
     else stopInclusiveVoice();
   }
-  inclusiveModeBtn.addEventListener('click', () => setInclusiveMode(!inclusiveMode));
   inclusiveCloseBtn.addEventListener('click', () => setInclusiveMode(false));
 
   inclusiveDysBtn.addEventListener('click', () => {
@@ -6763,11 +6713,11 @@
   publicPostitBtn.addEventListener('click', () => addPostitBtn.click());
 
   const publicSilentBtn = document.getElementById('publicSilentBtn');
-  publicSilentBtn.addEventListener('click', () => {
-    const on = document.body.classList.toggle('silent-reading');
-    publicSilentBtn.classList.toggle('active', on);
-    publicSilentBtn.setAttribute('aria-pressed', String(on));
-  });
+  // Mode lecture seule : ex-"lecture silencieuse" (masquait juste les
+  // post-it), reprend désormais la vue de lecture accessible à plat
+  // (setInclusiveMode) — un seul bouton, une seule fonctionnalité, plutôt
+  // qu'un mode spécial séparé.
+  publicSilentBtn.addEventListener('click', () => setInclusiveMode(!inclusiveMode));
 
   function renderPublicCarnetDropdown(){
     const list = [["Carnet d'étude", 'carnet-1'], ...customNotebooks.map(n => [n.title, n.id])];
