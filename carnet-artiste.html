@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carnet d'étude — Corps / Esprit</title>
-<meta name="description" content="Carnet d'étude en ligne interactif explorant la dualité corps/esprit : pages illustrées, post-it collaboratifs et carnets multiples.">
+<meta name="description" content="Carnet d'étude en ligne interactif explorant la dualité corps/esprit : pages illustrées, notes d'artiste et carnets multiples.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600;700&family=Caveat:wght@400;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- OpenDyslexic : police d'accessibilité pour l'outil Texte, non disponible via Google Fonts -->
@@ -2026,7 +2026,7 @@
     <button class="dock-btn" data-tool="enveloppe" type="button" aria-label="Enveloppe">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 6.5l9 6.5 9-6.5"/></svg>
     </button>
-    <button class="dock-btn" data-tool="postit" type="button" aria-label="Post-it">
+    <button class="dock-btn" data-tool="postit" type="button" aria-label="Note">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11l3 3v13H5V4Z"/><path d="M16 4v3h3"/></svg>
     </button>
     <button class="dock-btn dock-btn--plus" data-tool="plus" type="button" aria-label="Plus d'outils">
@@ -2432,7 +2432,7 @@
     <!-- ---- POST-IT (création) ---- -->
     <div class="panel-content" id="panelPostit" style="display:none;">
       <button class="tool-btn" id="artistArmPostitBtn" type="button" style="width:100%; margin-bottom:12px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 5v14M5 12h14"/></svg> Déposer un post-it
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 5v14M5 12h14"/></svg> Déposer une note
       </button>
       <div class="tool-hint" style="margin:0;">Cliquez sur une page ou une marge après avoir armé l'outil.</div>
     </div>
@@ -2505,7 +2505,7 @@
   <div class="new-notebook-modal" id="deletePageModal" role="dialog" aria-modal="true" aria-labelledby="deletePageModalTitle">
     <div class="new-notebook-modal__card">
       <h3 id="deletePageModalTitle">Supprimer cette double-page ?</h3>
-      <p id="deletePageModalText">Le texte, les images, les post-it et les dessins de ces deux pages seront définitivement supprimés. Les pages suivantes seront renumérotées. Cette action ne peut pas être annulée.</p>
+      <p id="deletePageModalText">Le texte, les images, les notes et les dessins de ces deux pages seront définitivement supprimés. Les pages suivantes seront renumérotées. Cette action ne peut pas être annulée.</p>
       <div class="new-notebook-modal__actions">
         <button class="nnm-cancel" id="deletePageCancel" type="button">Annuler</button>
         <button class="nnm-create" id="deletePageConfirm" type="button" style="background:var(--corps);">Supprimer</button>
@@ -2586,7 +2586,7 @@
   <!-- Ancien bouton flottant post-it : conservé uniquement comme déclencheur
        JS headless (voir CSS .add-postit-btn), sa place visuelle est reprise
        par la barre publique ci-dessous et par le dock artiste. -->
-  <button class="add-postit-btn" id="addPostitBtn" aria-label="Ajouter un post-it">
+  <button class="add-postit-btn" id="addPostitBtn" aria-label="Ajouter une note">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M12 5v14M5 12h14"/>
     </svg>
@@ -2608,9 +2608,6 @@
        #publicSilentBtn) — plus de dock/bouton séparé pour ça. ============ -->
   <div class="inclusive-options-pill" id="inclusiveOptionsPill">
     <button type="button" id="inclusiveDysBtn" class="inclusive-dys-btn" aria-label="Activer la police DYS" aria-pressed="false" data-tooltip="Police DYS">DYS</button>
-    <button type="button" id="inclusiveVoiceBtn" aria-label="Lire le carnet à voix haute" aria-pressed="false" data-tooltip="Lecture à voix haute">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M16 8a5 5 0 010 8M19 5a9 9 0 010 14"/></svg>
-    </button>
   </div>
 
   <!-- ============ MODE DE LECTURE INCLUSIF : calque + page unique défilante ============
@@ -2631,13 +2628,13 @@
     </div>
   </div>
 
-  <!-- ============ BARRE PUBLIQUE : Carnet + Post-it, flottante, bas centre ============ -->
+  <!-- ============ BARRE PUBLIQUE : Carnet, Voix, Lecture seule, flottante, bas centre ============ -->
   <div class="public-toolbar" id="publicToolbar">
     <button class="dock-btn" id="publicCarnetBtn" type="button" aria-label="Changer de carnet" data-tooltip="Changer de carnet">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 5.5C5 4.2 8 4 12 5v14c-4-1-7-.8-9 .5V5.5Z"/><path d="M21 5.5C19 4.2 16 4 12 5v14c4-1 7-.8 9 .5V5.5Z"/></svg>
     </button>
-    <button class="dock-btn" id="publicPostitBtn" type="button" aria-label="Déposer un post-it" data-tooltip="Déposer un post-it">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h11l3 3v13H5V4Z"/><path d="M16 4v3h3"/></svg>
+    <button class="dock-btn" id="inclusiveVoiceBtn" type="button" aria-label="Lire le carnet à voix haute" data-tooltip="Lecture à voix haute" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M16 8a5 5 0 010 8M19 5a9 9 0 010 14"/></svg>
     </button>
     <button class="dock-btn" id="publicSilentBtn" type="button" aria-label="Mode lecture seule" data-tooltip="Mode lecture seule" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><line x1="3" y1="21" x2="21" y2="3"/></svg>
@@ -2647,14 +2644,14 @@
 
   <div class="postit-panel" id="postitPanel" role="dialog" aria-modal="false" aria-labelledby="postitPanelTitle">
     <div class="postit-panel__head">
-      <h3 id="postitPanelTitle">Créer un post-it</h3>
+      <h3 id="postitPanelTitle">Nouvelle note</h3>
       <button class="postit-panel__close" id="postitPanelClose" aria-label="Fermer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
 
     <fieldset style="border:none; padding:0; margin:0;">
-      <legend class="sr-only">Couleur du post-it</legend>
+      <legend class="sr-only">Couleur de la note</legend>
       <label id="colorSwatchesLabel">Couleur</label>
       <div class="color-swatches" id="colorSwatches" role="group" aria-labelledby="colorSwatchesLabel">
         <button type="button" data-color="yellow" class="selected" aria-label="Jaune" aria-pressed="true"></button>
@@ -2664,17 +2661,11 @@
       </div>
     </fieldset>
 
-    <label for="postitText">Commentaire</label>
+    <label for="postitText">Texte</label>
     <textarea id="postitText" maxlength="2200" placeholder="max 300 mots" aria-describedby="wordCount"></textarea>
     <div class="word-count" id="wordCount" aria-live="polite">0 / 300 mots</div>
 
-    <label for="postitName">Nom</label>
-    <input type="text" id="postitName" placeholder="Votre nom">
-
-    <label for="postitHandle">Identifiant Instagram</label>
-    <input type="text" id="postitHandle" placeholder="@pseudo">
-
-    <button class="postit-panel__submit" id="postitSubmit" disabled>Publier le post-it</button>
+    <button class="postit-panel__submit" id="postitSubmit" disabled>Ajouter la note</button>
   </div>
 
   <div class="comment-thread" id="commentThread" role="dialog" aria-modal="false" aria-labelledby="commentThreadTitle">
@@ -3071,7 +3062,7 @@
       if (!hasPostit && !hasBlock && !hasDrawing){
         const hint = document.createElement('div');
         hint.className = 'blank-hint';
-        hint.textContent = 'Page vierge — un post-it dans la marge n\'attend que vous.';
+        hint.textContent = 'Page vierge.';
         container.appendChild(hint);
       }
     });
@@ -3607,15 +3598,13 @@
   }
   setInterval(pollWritingIndicator, TYPING_POLL_INTERVAL);
 
-  // ============ MODE PUBLIC : post-it ============
+  // ============ NOTES (mode artiste uniquement) ============
   const addPostitBtn = document.getElementById('addPostitBtn');
   const postitPanel = document.getElementById('postitPanel');
   const postitPanelClose = document.getElementById('postitPanelClose');
   const colorSwatches = document.getElementById('colorSwatches');
   const postitText = document.getElementById('postitText');
   const wordCount = document.getElementById('wordCount');
-  const postitName = document.getElementById('postitName');
-  const postitHandle = document.getElementById('postitHandle');
   const postitSubmit = document.getElementById('postitSubmit');
   const marginLeft = document.getElementById('marginLeft');
   const marginRight = document.getElementById('marginRight');
@@ -3625,7 +3614,6 @@
   const threadSubmit = document.getElementById('threadSubmit');
 
   const WORD_LIMIT = 300;
-  const EDIT_LIMIT = 3;
   let selectedColor = 'yellow';
   let placing = false;
   let pendingSpot = null; // { container, x, y }
@@ -3674,9 +3662,8 @@
   });
 
   function updateSubmitState(){
-    postitSubmit.disabled = wordCountOf(postitText.value) === 0 || postitHandle.value.trim() === '';
+    postitSubmit.disabled = wordCountOf(postitText.value) === 0;
   }
-  postitHandle.addEventListener('input', updateSubmitState);
 
   colorSwatches.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -3690,7 +3677,6 @@
   addPostitBtn.addEventListener('click', () => {
     placing = !placing;
     addPostitBtn.classList.toggle('active', placing);
-    publicPostitBtn.classList.toggle('active', placing);
     document.body.classList.toggle('placing-mode', placing);
     [pageLeft, pageRight, marginLeft, marginRight].forEach(el => el.classList.toggle('placing-target', placing));
     closePanel();
@@ -3708,7 +3694,6 @@
       };
       placing = false;
       addPostitBtn.classList.remove('active');
-      publicPostitBtn.classList.remove('active');
       document.body.classList.remove('placing-mode');
       [pageLeft, pageRight, marginLeft, marginRight].forEach(x => x.classList.remove('placing-target'));
       openPanel(e.clientX, e.clientY);
@@ -3726,8 +3711,6 @@
   function closePanel(){
     postitPanel.classList.remove('open');
     postitText.value = '';
-    postitName.value = '';
-    postitHandle.value = '';
     wordCount.textContent = `0 / ${WORD_LIMIT} mots`;
     wordCount.classList.remove('limit');
     updateSubmitState();
@@ -3748,30 +3731,24 @@
       relX: rel.relX,
       relY: rel.relY,
       color: selectedColor,
-      text: postitText.value.trim(),
-      name: postitName.value.trim(),
-      handle: postitHandle.value.trim()
+      text: postitText.value.trim()
     });
     closePanel();
   });
 
-  // Crée un nouveau post-it : l'ajoute au cache, le sauvegarde (partagé, visible
-  // par tous les futurs visiteurs) et note sa création dans "mes créations"
-  // (local à ce navigateur, sert à autoriser l'édition plus tard).
-  async function createNewPostit({ container, side, spreadNum, relX, relY, color, text, name, handle }){
+  // Crée une nouvelle note (mode artiste uniquement) : l'ajoute au cache et
+  // la sauvegarde (partagée, visible par tous les visiteurs).
+  async function createNewPostit({ container, side, spreadNum, relX, relY, color, text }){
     const data = {
       id: genId(),
       spread: spreadNum,
       container, side, relX, relY,
       rotation: +(Math.random() * 4 - 2).toFixed(1),
-      color, text, name, handle,
-      edits: 0,
-      replies: [],
+      color, text,
       createdAt: Date.now()
     };
     postitsCache.push(data);
-    myCreations.push(data.id);
-    await Promise.all([persistPostits(), persistMyCreations()]);
+    await persistPostits();
     if (data.spread === spread) buildPostitElement(data, true);
     refreshStorageUsage();
     if (typeof updateBlankHints === 'function') updateBlankHints();
@@ -3788,26 +3765,8 @@
     el.style.left = pos.left + 'px';
     el.style.top = pos.top + 'px';
     el.style.setProperty('--postit-rot', data.rotation + 'deg');
-    const label = data.name ? escapeHTML(data.name) : (data.handle ? '@' + escapeHTML(data.handle) : 'Anonyme');
-    el.title = [data.name, data.handle ? '@' + data.handle : ''].filter(Boolean).join(' — ');
 
-    data.likes = data.likes || 0;
-    const liked = myLikes.includes(data.id);
-    el.innerHTML = `
-      <div class="postit-text">${escapeHTML(data.text)}</div>
-      <div class="postit-footer">
-        <span>${label}</span>
-        <span class="postit-actions">
-          <button class="postit-icon-btn postit-like-btn${liked ? ' liked' : ''}" aria-label="Aimer" type="button" aria-pressed="${liked}">
-            <svg viewBox="0 0 24 24" fill="${liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 21s-7.5-4.6-10-9.3C.5 8.2 2.4 5 5.8 5c1.9 0 3.4 1 4.2 2.5C10.8 6 12.3 5 14.2 5c3.4 0 5.3 3.2 3.8 6.7C19.5 16.4 12 21 12 21z"/></svg>
-            <span class="postit-like-count">${data.likes}</span>
-          </button>
-          <button class="postit-icon-btn postit-comment-btn" aria-label="Commentaires" type="button">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H8l-5 4V6a2 2 0 012-2h14a2 2 0 012 2v9z"/></svg>
-          </button>
-        </span>
-      </div>
-    `;
+    el.innerHTML = `<div class="postit-text">${escapeHTML(data.text)}</div>`;
     document.body.appendChild(el);
     if (animate){
       el.classList.add('pop-in');
@@ -3818,13 +3777,10 @@
     // ---- accessibilité clavier ----
     el.tabIndex = 0;
     el.setAttribute('role', 'group');
-    el.setAttribute('aria-label', 'Post-it de ' + (data.name || (data.handle ? '@' + data.handle : 'anonyme')));
+    el.setAttribute('aria-label', 'Note');
     el.addEventListener('keydown', (e) => {
-      if (e.target !== el) return; // laisse le textarea / bouton interne gérer ses propres touches
-      if (e.key === 'Enter'){
-        e.preventDefault();
-        el.querySelector('.postit-comment-btn')?.click();
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && artistMode){
+      if (e.target !== el || !artistMode) return;
+      if ((e.key === 'Delete' || e.key === 'Backspace')){
         e.preventDefault();
         el.querySelector('.postit-delete-x')?.click();
       }
@@ -3873,35 +3829,17 @@
 
   function attachPostitBehaviour(el, data){
     const textEl = el.querySelector('.postit-text');
-    const commentBtn = el.querySelector('.postit-comment-btn');
-    const likeBtn = el.querySelector('.postit-like-btn');
-    const isMine = myCreations.includes(data.id);
-
-    likeBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const liked = myLikes.includes(data.id);
-      if (liked){
-        myLikes = myLikes.filter(id => id !== data.id);
-        data.likes = Math.max(0, (data.likes || 0) - 1);
-      } else {
-        myLikes.push(data.id);
-        data.likes = (data.likes || 0) + 1;
-      }
-      likeBtn.classList.toggle('liked', !liked);
-      likeBtn.setAttribute('aria-pressed', String(!liked));
-      likeBtn.querySelector('svg').setAttribute('fill', !liked ? 'currentColor' : 'none');
-      likeBtn.querySelector('.postit-like-count').textContent = data.likes;
-      await Promise.all([persistPostits(), persistMyLikes()]);
-    });
 
     // déplacement libre, contraint à la page + marge associée ; la position
-    // finale est sauvegardée (en fraction de la zone) pour tous les visiteurs
-    // (via Pointer Events : fonctionne indifféremment à la souris, au doigt
-    // ou au stylet — voir aussi CSS touch-action:none sur .postit)
+    // finale est sauvegardée (en fraction de la zone) — réservé au mode
+    // artiste (seul rôle qui crée/déplace des notes) — via Pointer Events
+    // (fonctionne indifféremment à la souris, au doigt ou au stylet — voir
+    // aussi CSS touch-action:none sur .postit)
     let dragging = false, offX = 0, offY = 0, zone = null;
     el.addEventListener('pointerdown', (e) => {
+      if (!artistMode) return;
       if (e.target === textEl && textEl.isContentEditable) return;
-      if (e.target.closest('.postit-comment-btn') || e.target.closest('.postit-like-btn') || e.target.closest('.postit-delete-x')) return;
+      if (e.target.closest('.postit-delete-x')) return;
       pushUndo();
       dragging = true;
       uiDragActive = true;
@@ -3915,9 +3853,9 @@
     });
     // Écouteurs de déplacement/relâche attachés à l'ÉLÉMENT (via
     // setPointerCapture ci-dessus, qui redirige les events même si le
-    // pointeur sort visuellement du post-it), et non à `document` : sinon,
-    // comme les post-it sont recréés à chaque changement de double-page,
-    // chaque nouveau post-it accumulerait sa propre paire de listeners sur
+    // pointeur sort visuellement de la note), et non à `document` : sinon,
+    // comme les notes sont recréées à chaque changement de double-page,
+    // chaque nouvelle note accumulerait sa propre paire de listeners sur
     // `document`, jamais retirée — une fuite qui s'aggrave à chaque
     // navigation au fil d'une session d'édition.
     el.addEventListener('pointermove', (e) => {
@@ -3942,17 +3880,9 @@
       await persistPostits();
     });
 
-    // édition limitée à 3 fois, réservée au créateur (identifié localement,
-    // ce navigateur — voir myCreations)
+    // édition du texte — réservée à l'artiste, sans limite (usage personnel)
     textEl.addEventListener('dblclick', () => {
-      if (!isMine){
-        textEl.title = "Seul l'auteur de ce post-it peut le modifier.";
-        return;
-      }
-      if (data.edits >= EDIT_LIMIT){
-        textEl.title = 'Limite de 3 modifications atteinte pour ce post-it';
-        return;
-      }
+      if (!artistMode) return;
       pushUndo();
       textEl.contentEditable = 'true';
       textEl.focus();
@@ -3960,16 +3890,9 @@
     textEl.addEventListener('blur', async () => {
       if (textEl.isContentEditable){
         textEl.contentEditable = 'false';
-        data.edits += 1;
         data.text = textEl.innerText;
         await persistPostits();
       }
-    });
-
-    // fil de commentaires
-    commentBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openThread(data, el);
     });
   }
 
@@ -4221,7 +4144,6 @@
       placingLink = false;
       placing = false;
       addPostitBtn.classList.remove('active');
-      publicPostitBtn.classList.remove('active');
       document.body.classList.remove('placing-mode');
       if (previewMode) setPreviewMode(false);
     }
@@ -4527,7 +4449,7 @@
     const delBtn = document.createElement('button');
     delBtn.className = 'postit-delete-x';
     delBtn.type = 'button';
-    delBtn.setAttribute('aria-label', 'Supprimer ce post-it');
+    delBtn.setAttribute('aria-label', 'Supprimer cette note');
     delBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg>';
     delBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
@@ -4548,7 +4470,7 @@
   const artistPanel = document.getElementById('artistPanel');
   const artistPanelTitle = document.getElementById('artistPanelTitle');
   const artistPanelClose = document.getElementById('artistPanelClose');
-  const PANEL_TITLES = { carnet: 'Carnet', enveloppe: 'Enveloppe', texte: 'Texte', image: 'Image', dessin: 'Dessin', forme: 'Forme', postit: 'Post-it', plus: "Plus d'outils" };
+  const PANEL_TITLES = { carnet: 'Carnet', enveloppe: 'Enveloppe', texte: 'Texte', image: 'Image', dessin: 'Dessin', forme: 'Forme', postit: 'Note', plus: "Plus d'outils" };
   let activeDockTool = null;
 
   function openArtistPanel(tool){
@@ -6553,6 +6475,7 @@
       return;
     }
     if (inclusiveVoiceActive){ stopInclusiveVoice(); return; }
+    buildInclusiveContent(); // accessible même si le mode lecture seule n'est pas activé
     inclusiveVoiceParas = Array.from(inclusiveMain.querySelectorAll('article p'));
     if (!inclusiveVoiceParas.length) return;
     inclusiveVoiceActive = true;
@@ -6700,17 +6623,10 @@
   });
   document.getElementById('plusOpenEnveloppeBtn').addEventListener('click', () => openArtistPanel('enveloppe'));
 
-  // ============ BARRE PUBLIQUE : Carnet + Post-it (flottante, bas centre) ============
-  // Le bouton Post-it réutilise exactement le même déclencheur que le dock
-  // artiste (addPostitBtn.click()) — la logique de placement/création du
-  // post-it (armement, clic sur la page, panneau de saisie) reste unique et
-  // partagée entre les deux rôles.
+  // ============ BARRE PUBLIQUE : Carnet, Voix, Lecture seule (flottante, bas centre) ============
   const publicToolbar = document.getElementById('publicToolbar');
   const publicCarnetBtn = document.getElementById('publicCarnetBtn');
-  const publicPostitBtn = document.getElementById('publicPostitBtn');
   const publicCarnetDropdown = document.getElementById('publicCarnetDropdown');
-
-  publicPostitBtn.addEventListener('click', () => addPostitBtn.click());
 
   const publicSilentBtn = document.getElementById('publicSilentBtn');
   // Mode lecture seule : ex-"lecture silencieuse" (masquait juste les
@@ -7823,7 +7739,7 @@
     // construire. Disparaît de lui-même après quelques secondes.
     try{
       if (!artistMode && localStorage.getItem('carnet:seenIntro') !== '1'){
-        setTimeout(() => showToast('‹ Glissez pour tourner la page › — cliquez ❤️ pour réagir à un post-it'), 700);
+        setTimeout(() => showToast('‹ Glissez pour tourner la page ›'), 700);
         localStorage.setItem('carnet:seenIntro', '1');
       }
     } catch(e){ /* localStorage indisponible : tant pis pour l'indice */ }
