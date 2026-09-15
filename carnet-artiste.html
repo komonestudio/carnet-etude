@@ -1211,32 +1211,105 @@
   .postit-panel__submit:disabled{ opacity:.45; cursor:default; }
 
   /* fil de commentaires */
-  .comment-thread{
-    position:fixed;
-    width:220px;
-    background:#fff;
-    border-radius:12px;
-    box-shadow: 0 18px 36px rgba(20,17,10,.3);
-    padding:12px 13px;
-    z-index:65;
-    display:none;
+  /* ---- bandeau de commentaires publics : bottom-sheet centré, partagé pour
+     toute la double-page, ouvert par défaut, replié/masqué via un bouton
+     bouton juste après l'icône Carnet, public-toolbar et artist-dock) ---- */
+  .comments-panel{
+    position:fixed; left:50%; bottom:0; transform:translateX(-50%);
+    width:min(560px, calc(100vw - 32px));
+    max-height:46vh;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border:1px solid rgba(38,35,25,.12);
+    border-bottom:none;
+    border-radius:18px 18px 0 0;
+    box-shadow: 0 -10px 30px rgba(20,17,10,.18);
+    z-index:54;
+    display:flex; flex-direction:column;
     font-family:'Inter', sans-serif;
+    transition: transform .25s ease;
   }
-  .comment-thread.open{ display:block; }
-  .comment-thread h4{ margin:0 0 8px; font-size:11.5px; font-weight:700; color: var(--ink); }
-  .comment-thread .reply{
-    font-size:11.5px; color: var(--ink-soft); padding:6px 0; border-top:1px solid rgba(38,35,25,.08);
+  .comments-panel.hidden{ transform: translateX(-50%) translateY(100%); }
+
+  .comments-panel__head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 16px; border-bottom:1px solid rgba(38,35,25,.1); flex-shrink:0;
   }
-  .comment-thread .reply:first-of-type{ border-top:none; }
-  .comment-thread .reply b{ color:var(--ink); }
-  .comment-thread .reply-empty{ font-size:11px; color: rgba(38,35,25,.4); font-style:italic; }
-  .comment-thread textarea{
-    width:100%; height:46px; margin-top:8px; border:1px solid rgba(38,35,25,.15);
-    border-radius:8px; padding:7px 8px; font-size:11.5px; font-family:'Inter', sans-serif; resize:none;
+  .comments-panel__head h4{ margin:0; font-size:13px; font-weight:700; color:var(--ink); }
+  .comments-panel__head h4 span{ font-weight:400; color:var(--ink-soft); }
+  .comments-panel__close{
+    width:26px; height:26px; border:none; border-radius:50%;
+    background: rgba(38,35,25,.08); color:var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
-  .comment-thread button{
-    margin-top:7px; width:100%; padding:7px; border:none; border-radius:8px;
-    background: var(--esprit); color:#fff; font-size:11.5px; font-weight:600; cursor:pointer;
+  .comments-panel__close svg{ width:12px; height:12px; }
+
+  .comments-panel__list{ overflow-y:auto; padding:6px 16px; flex:1 1 auto; min-height:0; }
+  .comment-item{ padding:9px 0; border-bottom:1px solid rgba(38,35,25,.08); font-size:12.5px; color:var(--ink); border-radius:8px; scroll-margin:10px; }
+  .comment-item:last-child{ border-bottom:none; }
+  .comment-item.highlight{ background: rgba(251,133,0,.12); }
+  .comment-item__quote{
+    font-family:'Newsreader', serif; font-style:italic; font-size:11.5px;
+    color: var(--ink-soft); border-left:2px solid var(--esprit); padding-left:8px; margin-bottom:5px;
+  }
+  .comment-item__meta{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:5px; }
+  .comment-item__author{ font-weight:600; color:var(--ink-soft); font-size:11px; }
+  .comment-item__del{
+    width:20px; height:20px; border:none; border-radius:50%;
+    background: rgba(179,80,46,.12); color:var(--corps); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .comment-item__del svg{ width:9px; height:9px; }
+  .comments-panel__empty{ font-family:'Newsreader', serif; font-style:italic; font-size:12px; color:var(--ink-soft); padding:8px 0; }
+
+  .comments-panel__form{ padding:10px 16px 14px; border-top:1px solid rgba(38,35,25,.1); flex-shrink:0; }
+  .comments-panel__form textarea{
+    width:100%; height:50px; border:1px solid rgba(38,35,25,.15); border-radius:9px;
+    padding:8px 9px; font-family:'Inter', sans-serif; font-size:12px; resize:none;
+  }
+  .comments-panel__row{ display:flex; gap:8px; margin-top:7px; }
+  .comments-panel__row input{
+    flex:1; min-width:0; border:1px solid rgba(38,35,25,.15); border-radius:9px;
+    padding:8px 9px; font-family:'Inter', sans-serif; font-size:12px;
+  }
+  .comments-panel__actions{ display:flex; gap:8px; margin-top:8px; align-items:center; }
+  .comments-panel__marker-btn{
+    flex-shrink:0; padding:8px 10px; border-radius:9px; border:1px solid rgba(38,35,25,.15);
+    background:#fff; font-size:11px; font-weight:600; color:var(--ink); cursor:pointer;
+    display:flex; align-items:center; gap:5px;
+  }
+  .comments-panel__marker-btn.armed{ background: rgba(251,133,0,.14); border-color: var(--esprit); color: var(--esprit); }
+  .comments-panel__marker-btn svg{ width:12px; height:12px; }
+  .comments-panel__submit{
+    flex:1; padding:9px; border:none; border-radius:9px;
+    background:var(--esprit); color:#fff; font-weight:600; font-size:12.5px; cursor:pointer;
+  }
+  .comments-panel__submit:disabled{ opacity:.45; cursor:default; }
+  .comments-panel__form .tool-hint{ margin:8px 0 0; }
+
+  body.dark-mode .comments-panel__form textarea,
+  body.dark-mode .comments-panel__row input,
+  body.dark-mode .comments-panel__marker-btn{ background:#D3D7D9; color:#42484C; border-color: rgba(211,215,217,.3); }
+  body.dark-mode .comment-item__quote{ border-color:#072AC5; }
+  body.dark-mode .comments-panel__close{ background: rgba(244,245,245,.14); color:#F4F5F5; }
+  body.dark-mode .comment-item__del{ background: rgba(255,255,255,.14); }
+
+  /* ---- repère : petite pastille cliquable posée sur la page, reliée à un
+     commentaire du bandeau (voir renderCommentMarkers()) ---- */
+  .comment-marker{
+    position:absolute; width:18px; height:18px; border-radius:50%;
+    background: var(--esprit); border:2px solid var(--paper);
+    box-shadow:0 2px 6px rgba(20,17,10,.3);
+    cursor:pointer; z-index:7; transform:translate(-50%,-50%);
+    display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .comment-marker svg{ width:9px; height:9px; color:#fff; }
+  body.placing-comment-marker-mode .page,
+  body.placing-comment-marker-mode .margin-zone{ cursor: crosshair; }
+
+  @media (max-width: 900px){
+    .comments-panel{ max-height:42vh; width:calc(100vw - 16px); }
   }
 
   /* Sur mobile/tablette, la marge n'est plus masquée : une seule des deux
@@ -1313,7 +1386,7 @@
   body.dark-mode .layer-toolbar,
   body.dark-mode .postit-panel,
   body.dark-mode .artist-panel,
-  body.dark-mode .comment-thread,
+  body.dark-mode .comments-panel,
   body.dark-mode .crop-toolbar,
   body.dark-mode .new-notebook-modal__card{
     background: rgba(66,72,76,.88);
@@ -1826,8 +1899,6 @@
   body.artist-mode .undo-redo-bar{ display:flex; }
 
 
-  .reply-empty.artist-reply, .reply.artist-reply{ }
-  .reply.artist-reply b{ color: var(--esprit); }
 
   /* ============ RESPONSIVE MOBILE / TABLETTE ============
      Le carnet garde ses dimensions fixes en interne (ratio A5 jamais
@@ -2022,6 +2093,9 @@
   <div class="artist-dock" id="artistDock">
     <button class="dock-btn" data-tool="carnet" type="button" aria-label="Carnet">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 5.5C5 4.2 8 4 12 5v14c-4-1-7-.8-9 .5V5.5Z"/><path d="M21 5.5C19 4.2 16 4 12 5v14c4-1 7-.8 9 .5V5.5Z"/></svg>
+    </button>
+    <button class="dock-btn" id="artistCommentsToggleBtn" type="button" aria-label="Commentaires" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H8l-5 4V6a2 2 0 012-2h14a2 2 0 012 2v9z"/></svg>
     </button>
     <button class="dock-btn" data-tool="enveloppe" type="button" aria-label="Enveloppe">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 6.5l9 6.5 9-6.5"/></svg>
@@ -2633,6 +2707,9 @@
     <button class="dock-btn" id="publicCarnetBtn" type="button" aria-label="Changer de carnet" data-tooltip="Changer de carnet">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 5.5C5 4.2 8 4 12 5v14c-4-1-7-.8-9 .5V5.5Z"/><path d="M21 5.5C19 4.2 16 4 12 5v14c4-1 7-.8 9 .5V5.5Z"/></svg>
     </button>
+    <button class="dock-btn" id="publicCommentsToggleBtn" type="button" aria-label="Commentaires" data-tooltip="Commentaires" aria-pressed="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H8l-5 4V6a2 2 0 012-2h14a2 2 0 012 2v9z"/></svg>
+    </button>
     <button class="dock-btn" id="inclusiveVoiceBtn" type="button" aria-label="Lire le carnet à voix haute" data-tooltip="Lecture à voix haute" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M16 8a5 5 0 010 8M19 5a9 9 0 010 14"/></svg>
     </button>
@@ -2668,12 +2745,35 @@
     <button class="postit-panel__submit" id="postitSubmit" disabled>Ajouter la note</button>
   </div>
 
-  <div class="comment-thread" id="commentThread" role="dialog" aria-modal="false" aria-labelledby="commentThreadTitle">
-    <h4 id="commentThreadTitle">Fil de commentaires</h4>
-    <div id="threadReplies" aria-live="polite"></div>
-    <label for="threadInput" class="sr-only">Répondre à ce post-it</label>
-    <textarea id="threadInput" placeholder="Répondre à ce post-it…"></textarea>
-    <button id="threadSubmit">Envoyer</button>
+  <!-- ============ COMMENTAIRES PUBLICS : bandeau en bas d'écran, partagé
+       pour toute la double-page (gauche+droite). Ouvert à tous en écriture ;
+       un repère (clic libre ou phrase sélectionnée) est optionnel. ============ -->
+  <div class="comments-panel" id="commentsPanel">
+    <div class="comments-panel__head">
+      <h4>Commentaires <span id="commentsCount"></span></h4>
+      <button class="comments-panel__close" id="commentsPanelHideBtn" type="button" aria-label="Masquer les commentaires">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="comments-panel__list" id="commentsList"></div>
+    <div class="comments-panel__form">
+      <label for="commentTextArea" class="sr-only">Votre commentaire</label>
+      <textarea id="commentTextArea" maxlength="900" placeholder="Votre commentaire…"></textarea>
+      <div class="comments-panel__row">
+        <label for="commentNameInput" class="sr-only">Votre nom</label>
+        <input type="text" id="commentNameInput" placeholder="Votre nom (optionnel)">
+        <label for="commentHandleInput" class="sr-only">Identifiant Instagram</label>
+        <input type="text" id="commentHandleInput" placeholder="@pseudo (optionnel)">
+      </div>
+      <div class="comments-panel__actions">
+        <button type="button" class="comments-panel__marker-btn" id="commentMarkerBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-6-5.7-6-10a6 6 0 1112 0c0 4.3-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>
+          Repère
+        </button>
+        <button class="comments-panel__submit" id="commentSubmitBtn" disabled type="button">Publier</button>
+      </div>
+      <div class="tool-hint" id="commentMarkerHint" style="display:none;"></div>
+    </div>
   </div>
 
   <div class="undo-redo-bar" id="undoRedoBar">
@@ -3293,6 +3393,7 @@
     }
     updateNavButtons();
     updateSinglePageView(); // ré-affirme l'indicateur, les marges et la page visible en mode mobile
+    if (typeof refreshCommentsForCurrentSpread === 'function') refreshCommentsForCurrentSpread();
     if (typeof refreshCoverEditorPanel === 'function') refreshCoverEditorPanel();
   }
 
@@ -3456,12 +3557,14 @@
     // 1) retirer le contenu propre à cette double-page
     postitsCache = postitsCache.filter(p => p.spread !== toDelete);
     blocksCache = blocksCache.filter(b => b.spread !== toDelete);
+    commentsCache = commentsCache.filter(c => c.spread !== toDelete);
     delete drawingsCache[toDelete + '-left'];
     delete drawingsCache[toDelete + '-right'];
 
     // 2) décaler d'un cran tout ce qui suit la page supprimée
     postitsCache.forEach(p => { if (p.spread > toDelete) p.spread -= 1; });
     blocksCache.forEach(b => { if (b.spread > toDelete) b.spread -= 1; });
+    commentsCache.forEach(c => { if (c.spread > toDelete) c.spread -= 1; });
     const shiftedDrawings = {};
     Object.keys(drawingsCache).forEach(key => {
       const sepIndex = key.lastIndexOf('-');
@@ -3477,6 +3580,7 @@
     // 3) persister
     await persistPostits();
     await persistBlocks();
+    await persistComments();
     await storageSet('drawings:' + currentNotebookId, JSON.stringify(drawingsCache), true);
     await storageSet('totalSpreads:' + currentNotebookId, String(totalSpreads), true);
 
@@ -3548,7 +3652,7 @@
     currentNotebookId = id;
     spread = 0;
     closePanel();
-    commentThread.classList.remove('open');
+    if (typeof setCommentsPanelVisible === 'function') commentsPanel.style.display = 'none';
     clearHistory();
     try{
       await loadNotebookData();
@@ -3608,16 +3712,11 @@
   const postitSubmit = document.getElementById('postitSubmit');
   const marginLeft = document.getElementById('marginLeft');
   const marginRight = document.getElementById('marginRight');
-  const commentThread = document.getElementById('commentThread');
-  const threadReplies = document.getElementById('threadReplies');
-  const threadInput = document.getElementById('threadInput');
-  const threadSubmit = document.getElementById('threadSubmit');
 
   const WORD_LIMIT = 300;
   let selectedColor = 'yellow';
   let placing = false;
   let pendingSpot = null; // { container, x, y }
-  let activeThreadData = null;
 
   const sideOf = { pageLeft: 'left', marginLeft: 'left', pageRight: 'right', marginRight: 'right' };
   const containers = {
@@ -3896,41 +3995,269 @@
     });
   }
 
-  function openThread(data, postitEl){
-    activeThreadData = data;
-    if (!artistMode && myCreations.includes(data.id)){
-      seenReplies[data.id] = (data.replies || []).length;
-      persistSeenReplies();
+  // ============ COMMENTAIRES PUBLICS (bandeau en bas d'écran) ============
+  // Indépendant des Notes (réservées à l'artiste) : ouvert à tous en
+  // écriture, sans passer par un repère — le repère (clic libre sur la page
+  // ou phrase sélectionnée) est une option, jamais une obligation. Un seul
+  // bandeau par double-page, partagé pages gauche+droite (voir
+  // commentsForSpread). Simplifié à dessein : pas de fil de réponses
+  // imbriqué, juste une liste plate — chacun peut y ajouter un commentaire.
+  let commentsCache = []; // { id, spread, text, name, handle, marker:{side,relX,relY,quote}|null, likes, replies:[{id,text,author,createdAt}], createdAt }
+  let myCommentLikes = []; // ids des commentaires déjà aimés par ce navigateur — local, non partagé
+  const commentsPanel = document.getElementById('commentsPanel');
+  const commentsList = document.getElementById('commentsList');
+  const commentsCountEl = document.getElementById('commentsCount');
+  const commentsPanelHideBtn = document.getElementById('commentsPanelHideBtn');
+  const commentTextArea = document.getElementById('commentTextArea');
+  const commentNameInput = document.getElementById('commentNameInput');
+  const commentHandleInput = document.getElementById('commentHandleInput');
+  const commentMarkerBtn = document.getElementById('commentMarkerBtn');
+  const commentMarkerHint = document.getElementById('commentMarkerHint');
+  const commentSubmitBtn = document.getElementById('commentSubmitBtn');
+  const commentsToggleBtns = [document.getElementById('publicCommentsToggleBtn'), document.getElementById('artistCommentsToggleBtn')].filter(Boolean);
+
+  let commentsPanelVisible = true;
+  let markerArmed = false;
+  let pendingMarker = null; // { side, relX, relY, quote }
+
+  function persistComments(){ return storageSet('comments:' + currentNotebookId, JSON.stringify(commentsCache), true); }
+  function commentsForSpread(){ return commentsCache.filter(c => c.spread === spread); }
+
+  function setCommentsPanelVisible(on){
+    commentsPanelVisible = on;
+    commentsPanel.classList.toggle('hidden', !on);
+    commentsToggleBtns.forEach(btn => {
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+  }
+  commentsToggleBtns.forEach(btn => btn.addEventListener('click', () => setCommentsPanelVisible(!commentsPanelVisible)));
+  commentsPanelHideBtn.addEventListener('click', () => setCommentsPanelVisible(false));
+
+  function updateCommentSubmitState(){
+    commentSubmitBtn.disabled = commentTextArea.value.trim() === '';
+  }
+  commentTextArea.addEventListener('input', updateCommentSubmitState);
+
+  function renderCommentsPanel(){
+    const list = commentsForSpread();
+    commentsCountEl.textContent = list.length ? `(${list.length})` : '';
+    commentsList.innerHTML = list.length
+      ? list.map(renderCommentItemHTML).join('')
+      : '<div class="comments-panel__empty">Pas encore de commentaire sur cette double-page.</div>';
+  }
+
+  function renderCommentItemHTML(c){
+    const author = c.name ? escapeHTML(c.name) : (c.handle ? '@' + escapeHTML(c.handle) : 'Anonyme');
+    const quote = c.marker
+      ? (c.marker.quote ? `<div class="comment-item__quote">« ${escapeHTML(c.marker.quote)} »</div>` : `<div class="comment-item__quote">📍 repère sur la page</div>`)
+      : '';
+    const liked = myCommentLikes.includes(c.id);
+    const replies = c.replies || [];
+    const repliesHTML = replies.map(r => `
+        <div class="comment-reply${r.author === 'Artiste' ? ' comment-reply--artist' : ''}">
+          <span><b>${escapeHTML(r.author)}</b> ${escapeHTML(r.text)}</span>
+          ${artistMode ? `<button class="comment-reply__del" data-comment-id="${c.id}" data-reply-id="${r.id}" type="button" aria-label="Supprimer cette réponse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg></button>` : ''}
+        </div>`).join('');
+    return `<div class="comment-item" id="comment-${c.id}" data-id="${c.id}">
+        ${quote}
+        <div>${escapeHTML(c.text)}</div>
+        <div class="comment-item__meta">
+          <span class="comment-item__author">${author}</span>
+          <span class="comment-item__actions">
+            <button class="comment-item__like-btn${liked ? ' liked' : ''}" data-id="${c.id}" type="button" aria-pressed="${liked}" aria-label="Aimer">
+              <svg viewBox="0 0 24 24" fill="${liked ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 21s-7.5-4.6-10-9.3C.5 8.2 2.4 5 5.8 5c1.9 0 3.4 1 4.2 2.5C10.8 6 12.3 5 14.2 5c3.4 0 5.3 3.2 3.8 6.7C19.5 16.4 12 21 12 21z"/></svg>
+              <span class="comment-item__like-count">${c.likes || 0}</span>
+            </button>
+            <button class="comment-item__reply-btn" data-id="${c.id}" type="button">Répondre</button>
+            ${artistMode ? `<button class="comment-item__del" data-id="${c.id}" type="button" aria-label="Supprimer ce commentaire"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg></button>` : ''}
+          </span>
+        </div>
+        ${replies.length ? `<div class="comment-item__replies">${repliesHTML}</div>` : ''}
+        <div class="comment-item__reply-form" data-id="${c.id}">
+          <textarea placeholder="Votre réponse…"></textarea>
+          <button type="button" class="comment-item__reply-submit" data-id="${c.id}">Envoyer</button>
+        </div>
+      </div>`;
+  }
+
+  // délégation : la liste est réécrite (innerHTML) à chaque rendu, un seul
+  // jeu d'écouteurs posé une fois sur le conteneur couvre donc j'aime,
+  // réponse, envoi de réponse et suppression (commentaire ou réponse)
+  commentsList.addEventListener('click', async (e) => {
+    const likeBtn = e.target.closest('.comment-item__like-btn');
+    if (likeBtn){
+      const c = commentsCache.find(x => x.id === likeBtn.dataset.id);
+      if (!c) return;
+      const liked = myCommentLikes.includes(c.id);
+      if (liked){
+        myCommentLikes = myCommentLikes.filter(id => id !== c.id);
+        c.likes = Math.max(0, (c.likes || 0) - 1);
+      } else {
+        myCommentLikes.push(c.id);
+        c.likes = (c.likes || 0) + 1;
+      }
+      await Promise.all([persistComments(), persistMyCommentLikes()]);
+      renderCommentsPanel();
+      return;
     }
-    renderThread();
-    commentThread.classList.add('open');
-    const rect = postitEl.getBoundingClientRect();
-    const w = 220;
-    let left = Math.min(rect.right + 10, window.innerWidth - w - 16);
-    let top = Math.min(rect.top, window.innerHeight - 260);
-    commentThread.style.left = left + 'px';
-    commentThread.style.top = top + 'px';
-  }
-  function renderThread(){
-    const replies = (activeThreadData && activeThreadData.replies) || [];
-    threadReplies.innerHTML = replies.length
-      ? replies.map(r => `<div class="reply"><b>${escapeHTML(r.author)}</b><br>${escapeHTML(r.text)}</div>`).join('')
-      : '<div class="reply-empty">Pas encore de réponse.</div>';
-  }
-  threadSubmit.addEventListener('click', async () => {
-    const txt = threadInput.value.trim();
-    if (!txt || !activeThreadData) return;
-    activeThreadData.replies.push({ author: (typeof artistMode !== 'undefined' && artistMode) ? 'Artiste' : 'visiteur', text: txt, ts: Date.now() });
-    threadInput.value = '';
-    renderThread();
-    await persistPostits();
+    const replyBtn = e.target.closest('.comment-item__reply-btn');
+    if (replyBtn){
+      const form = commentsList.querySelector(`.comment-item__reply-form[data-id="${replyBtn.dataset.id}"]`);
+      commentsList.querySelectorAll('.comment-item__reply-form.open').forEach(f => { if (f !== form) f.classList.remove('open'); });
+      if (form){
+        form.classList.toggle('open');
+        if (form.classList.contains('open')) form.querySelector('textarea')?.focus();
+      }
+      return;
+    }
+    const replySubmit = e.target.closest('.comment-item__reply-submit');
+    if (replySubmit){
+      const c = commentsCache.find(x => x.id === replySubmit.dataset.id);
+      const form = replySubmit.closest('.comment-item__reply-form');
+      const textarea = form?.querySelector('textarea');
+      const txt = textarea?.value.trim();
+      if (!c || !txt) return;
+      c.replies = c.replies || [];
+      c.replies.push({ id: genId(), text: txt, author: artistMode ? 'Artiste' : 'Visiteur', createdAt: Date.now() });
+      await persistComments();
+      renderCommentsPanel();
+      return;
+    }
+    const replyDel = e.target.closest('.comment-reply__del');
+    if (replyDel){
+      const c = commentsCache.find(x => x.id === replyDel.dataset.commentId);
+      if (c) c.replies = (c.replies || []).filter(r => r.id !== replyDel.dataset.replyId);
+      await persistComments();
+      renderCommentsPanel();
+      return;
+    }
+    const delBtn = e.target.closest('.comment-item__del');
+    if (delBtn){
+      commentsCache = commentsCache.filter(c => c.id !== delBtn.dataset.id);
+      await persistComments();
+      renderCommentsPanel();
+      renderCommentMarkers();
+    }
   });
-  document.addEventListener('click', (e) => {
-    if (commentThread.classList.contains('open') &&
-        !commentThread.contains(e.target) &&
-        !e.target.closest('.postit-comment-btn')){
-      commentThread.classList.remove('open');
+
+  // ---- repères sur la page : petites pastilles cliquables, reliées à un
+  // commentaire du bandeau (surlignage + scroll au clic) ----
+  function renderCommentMarkers(){
+    document.querySelectorAll('.comment-marker').forEach(n => n.remove());
+    commentsForSpread().filter(c => c.marker).forEach(c => {
+      const pageEl = c.marker.side === 'left' ? pageLeft : pageRight;
+      const entries = pageEl.querySelector('.page-entries');
+      if (!entries) return;
+      const marker = document.createElement('button');
+      marker.type = 'button';
+      marker.className = 'comment-marker';
+      marker.style.left = (c.marker.relX * 100) + '%';
+      marker.style.top = (c.marker.relY * 100) + '%';
+      marker.setAttribute('aria-label', 'Voir le commentaire lié à ce repère');
+      marker.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="7"/></svg>';
+      marker.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setCommentsPanelVisible(true);
+        const item = document.getElementById('comment-' + c.id);
+        if (item){
+          item.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          item.classList.add('highlight');
+          setTimeout(() => item.classList.remove('highlight'), 1600);
+        }
+      });
+      entries.appendChild(marker);
+    });
+  }
+
+  function refreshCommentsForCurrentSpread(){
+    if (!isInterior(spread)){
+      commentsPanel.style.display = 'none';
+      document.querySelectorAll('.comment-marker').forEach(n => n.remove());
+      return;
     }
+    commentsPanel.style.display = '';
+    renderCommentsPanel();
+    renderCommentMarkers();
+  }
+
+  // ---- armement du repère : clic libre sur la page OU sélection d'une phrase ----
+  function armMarker(){
+    markerArmed = true;
+    commentMarkerBtn.classList.add('armed');
+    commentMarkerHint.style.display = 'block';
+    commentMarkerHint.textContent = 'Cliquez sur la page, ou sélectionnez une phrase, pour placer le repère.';
+    document.body.classList.add('placing-comment-marker-mode');
+  }
+  function disarmMarker(clearPending){
+    markerArmed = false;
+    commentMarkerBtn.classList.remove('armed');
+    document.body.classList.remove('placing-comment-marker-mode');
+    if (clearPending){
+      pendingMarker = null;
+      commentMarkerHint.style.display = 'none';
+    }
+  }
+  commentMarkerBtn.addEventListener('click', () => {
+    if (pendingMarker || markerArmed){ disarmMarker(true); return; } // déjà armé/posé : ce clic retire le repère
+    armMarker();
+  });
+
+  [pageLeft, pageRight, marginLeft, marginRight].forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (!markerArmed) return;
+      if (e.target.closest('.content-block') || e.target.closest('.postit') || e.target.closest('.comment-marker')) return;
+      const side = sideOf[el.id];
+      const rel = toRelative(side, e.clientX, e.clientY);
+      pendingMarker = { side, relX: rel.relX, relY: rel.relY, quote: null };
+      commentMarkerHint.textContent = 'Repère placé — cliquez sur « Repère » pour le retirer.';
+      disarmMarker(false);
+    }, true);
+  });
+
+  // sélection d'une phrase dans un bloc de texte pendant l'armement
+  document.addEventListener('mouseup', () => {
+    if (!markerArmed) return;
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+    const range = sel.getRangeAt(0);
+    const node = range.commonAncestorContainer;
+    const el = node.nodeType === 1 ? node : node.parentElement;
+    const textBlock = el && el.closest ? el.closest('.block-text') : null;
+    if (!textBlock) return;
+    const pageEl = textBlock.closest('.page');
+    if (!pageEl) return;
+    const side = sideForPageEl(pageEl);
+    const rect = range.getBoundingClientRect();
+    const rel = toRelative(side, rect.left + rect.width / 2, rect.top + rect.height / 2);
+    const quote = sel.toString().trim().slice(0, 180);
+    pendingMarker = { side, relX: rel.relX, relY: rel.relY, quote };
+    commentMarkerHint.textContent = `Repère sur « ${quote.slice(0, 40)}${quote.length > 40 ? '…' : ''} » — cliquez sur « Repère » pour le retirer.`;
+    disarmMarker(false);
+    sel.removeAllRanges();
+  });
+
+  commentSubmitBtn.addEventListener('click', async () => {
+    if (commentSubmitBtn.disabled) return;
+    const data = {
+      id: genId(),
+      spread,
+      text: commentTextArea.value.trim(),
+      name: commentNameInput.value.trim(),
+      handle: commentHandleInput.value.trim(),
+      marker: pendingMarker,
+      createdAt: Date.now()
+    };
+    commentsCache.push(data);
+    commentSubmitBtn.disabled = true;
+    await persistComments();
+    commentTextArea.value = '';
+    commentNameInput.value = '';
+    commentHandleInput.value = '';
+    disarmMarker(true);
+    updateCommentSubmitState();
+    renderCommentsPanel();
+    renderCommentMarkers();
   });
 
   // ============ Chargement / sauvegarde du carnet courant ============
@@ -3978,6 +4305,10 @@
     const rawBlocks = await storageGet('blocks:' + currentNotebookId, true);
     try{ blocksCache = rawBlocks ? JSON.parse(rawBlocks) : []; }
     catch(e){ blocksCache = []; }
+
+    const rawComments = await storageGet('comments:' + currentNotebookId, true);
+    try{ commentsCache = rawComments ? JSON.parse(rawComments) : []; }
+    catch(e){ commentsCache = []; }
 
     const rawDrawings = await storageGet('drawings:' + currentNotebookId, true);
     try{ drawingsCache = rawDrawings ? JSON.parse(rawDrawings) : {}; }
@@ -4475,7 +4806,7 @@
 
   function openArtistPanel(tool){
     activeDockTool = tool;
-    artistDock.querySelectorAll('.dock-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+    artistDock.querySelectorAll('.dock-btn[data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
     artistPanel.querySelectorAll('.panel-content').forEach(p => { p.style.display = (p.id === 'panel' + capitalize(tool)) ? 'block' : 'none'; });
     artistPanelTitle.textContent = PANEL_TITLES[tool] || '';
     artistPanel.classList.add('open');
@@ -4492,7 +4823,7 @@
   }
   function closeArtistPanel(){
     activeDockTool = null;
-    artistDock.querySelectorAll('.dock-btn').forEach(b => b.classList.remove('active'));
+    artistDock.querySelectorAll('.dock-btn[data-tool]').forEach(b => b.classList.remove('active'));
     artistPanel.classList.remove('open');
     if (typeof resetArtistPanelPos === 'function') resetArtistPanelPos();
   }
@@ -4636,6 +4967,7 @@
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const tool = btn.dataset.tool;
+      if (!tool) return; // bouton sans outil associé (ex: bascule commentaires), géré par son propre écouteur
       if (tool === 'image'){
         // pas de sous-outils : un clic arme directement le placement sur la page
         setPlacingBlockType(placingBlockType === 'image' ? null : 'image');
@@ -6681,10 +7013,11 @@
     const blocksBytes = new Blob([JSON.stringify(blocksCache)]).size;
     const postitsBytes = new Blob([JSON.stringify(postitsCache)]).size;
     const drawingsBytes = new Blob([JSON.stringify(drawingsCache)]).size;
+    const commentsBytes = new Blob([JSON.stringify(commentsCache)]).size;
     const ratio = Math.min(1, blocksBytes / STORAGE_KEY_LIMIT);
     fill.style.width = (ratio * 100) + '%';
     fill.classList.toggle('warn', ratio > 0.8);
-    label.textContent = `Poids du carnet : ${formatBytes(blocksBytes + postitsBytes + drawingsBytes)}` +
+    label.textContent = `Poids du carnet : ${formatBytes(blocksBytes + postitsBytes + drawingsBytes + commentsBytes)}` +
       (ratio > 0.8 ? ` — attention, les blocs (images) approchent la limite de ${formatBytes(STORAGE_KEY_LIMIT)}` : '');
   }
 
@@ -7639,16 +7972,6 @@
   attachDrawing('left', canvasLeft);
   attachDrawing('right', canvasRight);
 
-  // ============ MODE ARTISTE : réponse dans le fil de commentaires ============
-  // Réutilise le fil existant (openThread/renderThread) : en mode artiste,
-  // la réponse est étiquetée « Artiste » et mise en avant visuellement.
-  renderThread = function(){
-    const replies = (activeThreadData && activeThreadData.replies) || [];
-    threadReplies.innerHTML = replies.length
-      ? replies.map(r => `<div class="reply${r.author === 'Artiste' ? ' artist-reply' : ''}"><b>${escapeHTML(r.author)}</b><br>${escapeHTML(r.text)}</div>`).join('')
-      : '<div class="reply-empty">Pas encore de réponse.</div>';
-  };
-
   // ============ Masquage auto du chrome flottant au repos (mobile) ============
   // N'affecte que les petits écrans (dock horizontal) : après un temps sans
   // interaction, le dock/barre publique/zoom/mode sombre s'estompent pour
@@ -7658,7 +7981,7 @@
     const IDLE_MS = 3500;
     let idleTimer = null;
     function anyPanelOpen(){
-      return !!document.querySelector('.artist-panel.open, .postit-panel.open, .comment-thread.open, .new-notebook-modal.open, .public-carnet-dropdown.open, .crop-toolbar.open, .notebook-dropdown.open');
+      return !!document.querySelector('.artist-panel.open, .postit-panel.open, .new-notebook-modal.open, .public-carnet-dropdown.open, .crop-toolbar.open, .notebook-dropdown.open');
     }
     function scheduleHide(){
       clearTimeout(idleTimer);
@@ -7686,7 +8009,7 @@
   // (frappe, glisser…) sont des états locaux qu'une resynchronisation
   // distante pourrait écraser — un seul artiste à la fois, donc ce risque
   // n'a pas lieu d'être couru pour un bénéfice qui ne concerne que toi.
-  const LIVE_SYNC_KEYS = ['postits', 'blocks', 'drawings', 'totalSpreads', 'backgrounds',
+  const LIVE_SYNC_KEYS = ['postits', 'blocks', 'comments', 'drawings', 'totalSpreads', 'backgrounds',
     'coverFront', 'coverBack', 'envelopeConfig'];
   let liveSyncRefs = [];
   let liveSyncTimer = null;
