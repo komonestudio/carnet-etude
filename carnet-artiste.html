@@ -688,6 +688,74 @@
     color: var(--ink-soft); text-align:center; width:74%;
   }
 
+  /* ---------- PLUME : texte au fil (remplace la saisie par blocs) ----------
+     Un calque par page (gauche/droite), toujours actif — l'artiste écrit
+     directement dessus, sans armer d'outil. Débordement paginé automatique :
+     voir flowOverflowCascade()/flowUnderflowCascade() dans le script. */
+  .page-flow{
+    position:relative; z-index:2; width:100%; height:100%; overflow:hidden;
+    outline:none; font-size:14px; line-height:1.6; color:var(--ink);
+    font-family:'Newsreader', serif;
+  }
+  .page-flow p{ margin:0 0 10px; }
+  .page-flow:focus{ box-shadow: inset 0 0 0 1.5px rgba(251,133,0,.3); }
+  body.artist-mode .page-flow{ cursor:text; }
+  body:not(.artist-mode) .page-flow{ pointer-events:none; } /* lecture seule en mode public */
+
+  /* ---- médias ancrés au paragraphe le plus proche (remplace l'outil Image
+     de l'ancien système de blocs) ---- */
+  .anchor-layer{ position:absolute; inset:0; pointer-events:none; z-index:3; }
+  .media-item{
+    position:absolute; pointer-events:auto; cursor:grab; border-radius:4px;
+    box-shadow:0 6px 14px rgba(20,17,10,.22);
+  }
+  .media-item.dragging{ cursor:grabbing; box-shadow:0 14px 26px rgba(20,17,10,.32); z-index:2; }
+  .media-mask{ position:absolute; inset:0; overflow:hidden; border-radius:4px; }
+  .media-img{ position:absolute; display:block; max-width:none; max-height:none; pointer-events:none; }
+  .media-item.fixed{ box-shadow:0 6px 14px rgba(7,42,197,.35), 0 0 0 2px rgba(7,42,197,.5); }
+  .media-item .media-del, .media-item .media-pin{
+    position:absolute; width:18px; height:18px; border-radius:50%; border:2px solid var(--paper);
+    display:none; align-items:center; justify-content:center; cursor:pointer; font-size:9px; line-height:1;
+  }
+  .media-item .media-del{ top:-9px; right:-9px; background:var(--corps); color:#fff; }
+  .media-item .media-pin{ top:-9px; left:-9px; background:var(--ink-soft); color:#fff; }
+  .media-item.fixed .media-pin{ background:var(--esprit); }
+  .media-item.selected .media-del, .media-item.selected .media-pin{ display:flex; }
+  .media-item .media-resize{
+    position:absolute; right:-6px; bottom:-6px; width:13px; height:13px;
+    border-radius:3px; background:var(--esprit); border:2px solid var(--paper);
+    cursor:nwse-resize; display:none;
+  }
+  .media-item.selected .media-resize{ display:block; }
+  .media-item .media-rotate{
+    position:absolute; top:-30px; left:50%; transform:translateX(-50%);
+    width:17px; height:17px; border-radius:50%; background:#fff; border:2px solid var(--esprit);
+    color:var(--esprit); display:none; align-items:center; justify-content:center;
+    cursor:grab; font-size:10px; line-height:1;
+  }
+  .media-item.selected .media-rotate{ display:flex; }
+  .media-item.rotating .media-rotate{ cursor:grabbing; background:var(--esprit); color:#fff; }
+  .media-item.cropping{ box-shadow:0 0 0 2px var(--esprit); }
+  .media-item.cropping .media-img{ pointer-events:auto; cursor:grab; }
+  .media-item.cropping .media-img:active{ cursor:grabbing; }
+  .media-item.cropping .media-resize,
+  .media-item.cropping .media-del,
+  .media-item.cropping .media-rotate{ display:none; }
+  .media-crop-toolbar{
+    position:fixed; z-index:80; background: rgba(255,255,255,.92); backdrop-filter: blur(14px);
+    border:1px solid rgba(38,35,25,.12); border-radius:14px; padding:9px 12px;
+    box-shadow: 0 20px 44px rgba(20,17,10,.22), 0 3px 10px rgba(20,17,10,.14);
+    display:none; align-items:center; gap:8px;
+    font-family:'Inter', sans-serif; font-size:11px; color:var(--ink-soft);
+  }
+  .media-crop-toolbar.open{ display:flex; }
+  .media-crop-toolbar input[type=range]{ width:110px; accent-color: var(--esprit); }
+  .media-crop-toolbar button{
+    border:none; background:var(--esprit); color:#fff; border-radius:6px;
+    padding:5px 10px; cursor:pointer; font-size:11px; font-weight:600;
+  }
+  body.dark-mode .media-crop-toolbar{ background: rgba(66,72,76,.92); color:#F4F5F5; border-color: rgba(244,245,245,.18); }
+
   /* ---------- Reliure centrale ---------- */
   .spine{
     position:absolute; left:50%; top:0; bottom:0; width:20px;
@@ -1255,6 +1323,41 @@
   }
   .comment-item__meta{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:5px; }
   .comment-item__author{ font-weight:600; color:var(--ink-soft); font-size:11px; }
+  .comment-item__actions{ display:flex; align-items:center; gap:4px; }
+  .comment-item__like-btn{
+    display:flex; align-items:center; gap:3px; border:none; background:rgba(38,35,25,.06);
+    color: var(--ink-soft); border-radius:999px; padding:3px 7px; cursor:pointer; font-size:10.5px; font-weight:700;
+  }
+  .comment-item__like-btn svg{ width:11px; height:11px; }
+  .comment-item__like-btn.liked{ color:#c0392b; background: rgba(192,57,43,.12); }
+  .comment-item__reply-btn{
+    border:none; background:rgba(38,35,25,.06); color: var(--ink-soft); border-radius:999px;
+    padding:3px 9px; cursor:pointer; font-size:10.5px; font-weight:700;
+  }
+  .comment-item__reply-btn:hover, .comment-item__like-btn:hover{ background: rgba(251,133,0,.14); color: var(--esprit); }
+  .comment-item__replies{ margin:7px 0 0 12px; border-left:2px solid rgba(38,35,25,.1); padding-left:9px; }
+  .comment-reply{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:6px;
+    font-size:11.5px; color: var(--ink-soft); padding:4px 0;
+  }
+  .comment-reply b{ color: var(--ink); }
+  .comment-reply--artist b{ color: var(--esprit); }
+  .comment-item__reply-form{
+    display:none; margin-top:7px; gap:6px;
+  }
+  .comment-item__reply-form.open{ display:flex; }
+  .comment-item__reply-form textarea{
+    flex:1; height:36px; border:1px solid rgba(38,35,25,.15); border-radius:8px;
+    padding:6px 8px; font-family:'Inter', sans-serif; font-size:11.5px; resize:none;
+  }
+  .comment-item__reply-submit{
+    flex-shrink:0; border:none; border-radius:8px; padding:0 12px;
+    background: var(--esprit); color:#fff; font-size:11px; font-weight:600; cursor:pointer;
+  }
+  body.dark-mode .comment-item__like-btn,
+  body.dark-mode .comment-item__reply-btn{ background: rgba(255,255,255,.14); color:#F4F5F5; }
+  body.dark-mode .comment-item__replies{ border-color: rgba(255,255,255,.18); }
+  body.dark-mode .comment-item__reply-form textarea{ background:#D3D7D9; color:#42484C; border-color: rgba(211,215,217,.3); }
   .comment-item__del{
     width:20px; height:20px; border:none; border-radius:50%;
     background: rgba(179,80,46,.12); color:var(--corps); cursor:pointer;
@@ -2627,6 +2730,8 @@
                 </div>
               </div>
               <canvas class="draw-canvas" id="drawCanvasLeft"></canvas>
+              <div class="page-flow" id="flowLeft" data-side="left" spellcheck="false"></div>
+              <div class="anchor-layer" id="anchorLeft"></div>
               <div class="page-entries" id="entriesLeft">
               </div>
 
@@ -2643,6 +2748,8 @@
               <div class="fore-edge"></div>
               <div class="bottom-edge"></div>
               <canvas class="draw-canvas" id="drawCanvasRight"></canvas>
+              <div class="page-flow" id="flowRight" data-side="right" spellcheck="false"></div>
+              <div class="anchor-layer" id="anchorRight"></div>
               <div class="page-entries" id="entriesRight">
               </div>
 
@@ -4021,6 +4128,7 @@
   let pendingMarker = null; // { side, relX, relY, quote }
 
   function persistComments(){ return storageSet('comments:' + currentNotebookId, JSON.stringify(commentsCache), true); }
+  function persistMyCommentLikes(){ return storageSet('commentLikes:' + currentNotebookId, JSON.stringify(myCommentLikes), false); }
   function commentsForSpread(){ return commentsCache.filter(c => c.spread === spread); }
 
   function setCommentsPanelVisible(on){
@@ -4309,6 +4417,10 @@
     const rawComments = await storageGet('comments:' + currentNotebookId, true);
     try{ commentsCache = rawComments ? JSON.parse(rawComments) : []; }
     catch(e){ commentsCache = []; }
+
+    const rawCommentLikes = await storageGet('commentLikes:' + currentNotebookId, false);
+    try{ myCommentLikes = rawCommentLikes ? JSON.parse(rawCommentLikes) : []; }
+    catch(e){ myCommentLikes = []; }
 
     const rawDrawings = await storageGet('drawings:' + currentNotebookId, true);
     try{ drawingsCache = rawDrawings ? JSON.parse(rawDrawings) : {}; }
