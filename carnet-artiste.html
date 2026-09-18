@@ -755,6 +755,7 @@
     padding:5px 10px; cursor:pointer; font-size:11px; font-weight:600;
   }
   body.dark-mode .media-crop-toolbar{ background: rgba(66,72,76,.92); color:#F4F5F5; border-color: rgba(244,245,245,.18); }
+  body.placing-media .page{ cursor:crosshair; }
 
   /* ---------- Reliure centrale ---------- */
   .spine{
@@ -3486,6 +3487,8 @@
       if (s !== 1) closeEnvelope();
       renderPostitsForSpread();
       renderBlocksForSpread();
+      if (typeof loadFlowForSpread === 'function') loadFlowForSpread(s);
+      if (typeof renderFlowMediaForSpread === 'function') renderFlowMediaForSpread(s);
       if (typeof applyBackground === 'function') applyBackground();
       if (typeof clearDrawSelection === 'function') clearDrawSelection();
       resizeCanvases();
@@ -4368,6 +4371,466 @@
     renderCommentMarkers();
   });
 
+  // ============ PLUME : texte au fil + médias ancrés ============
+  // Remplace la saisie par blocs positionnés : l'artiste écrit directement
+  // sur la page (flowLeft/flowRight, toujours actifs, pas d'outil à armer).
+  // Passe 1 : pagination automatique entre gauche et droite DE LA DOUBLE-PAGE
+  // AFFICHÉE seulement — le débordement au-delà de la page droite n'est pas
+  // encore renvoyé vers la double-page suivante (prochaine étape). Les
+  // médias (images) se déposent et s'ancrent au paragraphe le plus proche,
+  // comme dans le prototype validé séparément.
+  let flowTextCache = {};   // { 'spread-side': innerHTML des paragraphes }
+  let flowMediaCache = [];  // { id, spread, side, type:'image', src, anchorId, dx, dy, w, h, fixed, fixedRelX, fixedRelY, rotation, imgScale, imgOffsetX, imgOffsetY }
+  let flowBlockIdCounter = 0;
+  let flowMediaIdCounter = 0;
+  const flowLeft = document.getElementById('flowLeft');
+  const flowRight = document.getElementById('flowRight');
+  const anchorLeft = document.getElementById('anchorLeft');
+  const anchorRight = document.getElementById('anchorRight');
+
+  function persistFlowText(){ return storageSet('flowText:' + currentNotebookId, JSON.stringify(flowTextCache), true); }
+  function persistFlowMedia(){ return storageSet('flowMedia:' + currentNotebookId, JSON.stringify(flowMediaCache), true); }
+
+  function flowElForSide(side){ return side === 'left' ? flowLeft : flowRight; }
+  function anchorLayerForSide(side){ return side === 'left' ? anchorLeft : anchorRight; }
+
+  // ---- garantit que chaque paragraphe a un id stable (ancrage des médias)
+  // et qu'aucun texte "nu" ne traîne à la racine du contenteditable ----
+  function normalizeFlowParagraphs(flow){
+    Array.from(flow.childNodes).forEach(node => {
+      if (node.nodeType === 3 && node.textContent !== ''){
+        const p = document.createElement('p');
+        flow.insertBefore(p, node);
+        p.appendChild(node);
+      }
+    });
+    if (!flow.firstChild) flow.appendChild(document.createElement('p'));
+    Array.from(flow.children).forEach(el => {
+      if (!el.dataset.blockId) el.dataset.blockId = 'fb' + (++flowBlockIdCounter);
+    });
+  }
+
+  // ---- charge/sauvegarde le texte de la double-page affichée ----
+  function loadFlowForSpread(s){
+    ['left', 'right'].forEach(side => {
+      const flow = flowElForSide(side);
+      const saved = flowTextCache[s + '-' + side];
+      flow.innerHTML = saved || '<p><br></p>';
+      normalizeFlowParagraphs(flow);
+    });
+  }
+  function saveFlowForSpread(s){
+    flowTextCache[s + '-left'] = flowLeft.innerHTML;
+    flowTextCache[s + '-right'] = flowRight.innerHTML;
+    persistFlowText();
+  }
+
+  // ---- débordement : bascule les derniers paragraphes de la page gauche
+  // vers la page droite tant que ça dépasse la hauteur utile ----
+  function flowOverflowCascade(){
+    let guard = 0;
+    while (flowLeft.scrollHeight > flowLeft.clientHeight + 1 && guard < 100){
+      guard++;
+      const kids = Array.from(flowLeft.children);
+      if (kids.length <= 1) break; // un seul (très long) paragraphe : impossible à couper ici
+      flowRight.insertBefore(kids[kids.length - 1], flowRight.firstChild);
+    }
+    // au-delà de la page droite : pas encore de double-page suivante (étape à venir) — on laisse tel quel
+  }
+  // ---- place libre : fait remonter les premiers paragraphes de la page
+  // droite vers la gauche tant qu'ils tiennent ----
+  function flowUnderflowCascade(){
+    let guard = 0;
+    while (flowRight.firstChild && guard < 100){
+      guard++;
+      const candidate = flowRight.firstChild;
+      flowLeft.appendChild(candidate);
+      if (flowLeft.scrollHeight > flowLeft.clientHeight + 1){
+        flowRight.insertBefore(candidate, flowRight.firstChild); // ne rentrait pas : on annule
+        break;
+      }
+    }
+    if (!flowRight.firstChild) flowRight.appendChild(document.createElement('p'));
+  }
+
+  let flowDebounceTimer = null;
+  [flowLeft, flowRight].forEach(flow => {
+    flow.addEventListener('input', () => {
+      normalizeFlowParagraphs(flow);
+      pingArtistTyping();
+      clearTimeout(flowDebounceTimer);
+      flowDebounceTimer = setTimeout(() => {
+        flowOverflowCascade();
+        flowUnderflowCascade();
+        saveFlowForSpread(spread);
+        repositionAllFlowMedia();
+      }, 150);
+    });
+    flow.addEventListener('blur', () => {
+      if (!flowDebounceTimer) return; // rien en attente : déjà sauvegardé
+      clearTimeout(flowDebounceTimer);
+      flowDebounceTimer = null;
+      flowOverflowCascade();
+      flowUnderflowCascade();
+      saveFlowForSpread(spread);
+      repositionAllFlowMedia();
+    });
+  });
+
+  // ============ MÉDIAS ANCRÉS (images déposées dans le texte) ============
+  let placingFlowMediaType = null; // 'image' | null
+  function armFlowMediaPlacement(type){
+    placingFlowMediaType = type;
+    document.body.classList.add('placing-media');
+  }
+  function disarmFlowMediaPlacement(){
+    placingFlowMediaType = null;
+    document.body.classList.remove('placing-media');
+  }
+
+  function nearestFlowBlock(side, x, y){
+    const flow = flowElForSide(side);
+    const blocks = Array.from(flow.children);
+    if (!blocks.length) return null;
+    let best = blocks[0], bestDist = Infinity;
+    blocks.forEach(b => {
+      const cx = b.offsetLeft, cy = b.offsetTop + b.offsetHeight / 2;
+      const d = Math.hypot(x - cx, y - cy);
+      if (d < bestDist){ bestDist = d; best = b; }
+    });
+    return best;
+  }
+
+  function createFlowMedia(type, content, side, x, y){
+    pushUndo();
+    const anchor = nearestFlowBlock(side, x, y);
+    const media = {
+      id: 'fm' + (++flowMediaIdCounter), spread, side, type, src: content,
+      anchorId: anchor ? anchor.dataset.blockId : null,
+      dx: anchor ? x - anchor.offsetLeft : x,
+      dy: anchor ? y - anchor.offsetTop : y,
+      w: 130, h: 95, fixed: false, rotation: 0,
+      imgScale: 1, imgOffsetX: 0.5, imgOffsetY: 0.5
+    };
+    flowMediaCache.push(media);
+    persistFlowMedia();
+    renderFlowMediaItem(media);
+    repositionFlowMedia(media);
+    selectFlowMedia(media.id);
+  }
+
+  function renderFlowMediaItem(media){
+    const el = document.createElement('div');
+    el.id = media.id;
+    el.className = 'media-item';
+    el.style.width = media.w + 'px';
+    el.style.height = media.h + 'px';
+    el.innerHTML = `<div class="media-mask"><img class="media-img" src="${media.src}" alt=""></div>
+      <button class="media-del" type="button" aria-label="Supprimer">✕</button>
+      <button class="media-pin" type="button" aria-label="Fixer à la page" title="Fixer à la page">📌</button>
+      <div class="media-rotate" title="Tourner (Maj = par pas de 15°)">↻</div>
+      <div class="media-resize" title="Redimensionner (Maj = proportions)"></div>`;
+    el.classList.toggle('fixed', !!media.fixed);
+    el.querySelector('.media-del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      pushUndo();
+      flowMediaCache = flowMediaCache.filter(m => m.id !== media.id);
+      persistFlowMedia();
+      el.remove();
+    });
+    el.querySelector('.media-pin').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFlowMediaFixed(media);
+    });
+    attachFlowMediaDrag(el, media);
+    attachFlowMediaResize(el, media);
+    attachFlowMediaRotate(el, media);
+    attachFlowImageCrop(el, media);
+    el.style.transform = `rotate(${media.rotation || 0}deg)`;
+    anchorLayerForSide(media.side).appendChild(el);
+    layoutFlowImage(media, el);
+  }
+
+  function layoutFlowImage(media, el){
+    const img = el.querySelector('.media-img');
+    if (!img) return;
+    function apply(){
+      const nw = img.naturalWidth || 1, nh = img.naturalHeight || 1;
+      const fw = el.clientWidth, fh = el.clientHeight;
+      if (!fw || !fh) return;
+      const scale = Math.max(fw / nw, fh / nh) * (media.imgScale || 1);
+      const dw = nw * scale, dh = nh * scale;
+      const slackX = Math.max(0, dw - fw), slackY = Math.max(0, dh - fh);
+      img.style.width = dw + 'px'; img.style.height = dh + 'px';
+      img.style.left = (-slackX * media.imgOffsetX) + 'px';
+      img.style.top = (-slackY * media.imgOffsetY) + 'px';
+    }
+    if (img.complete && img.naturalWidth) apply();
+    else img.addEventListener('load', apply, { once: true });
+  }
+
+  function selectFlowMedia(id){
+    document.querySelectorAll('.media-item.selected').forEach(m => m.classList.remove('selected'));
+    const el = document.getElementById(id);
+    if (el) el.classList.add('selected');
+  }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.media-item')) document.querySelectorAll('.media-item.selected').forEach(m => m.classList.remove('selected'));
+    if (flowCroppingEl && !e.target.closest('#' + flowCroppingEl.id) && !e.target.closest('.media-crop-toolbar')) closeFlowCropToolbar();
+  });
+
+  function toggleFlowMediaFixed(media){
+    const el = document.getElementById(media.id);
+    const pageEl = el.closest('.page');
+    if (!pageEl) return;
+    pushUndo();
+    const left = parseFloat(el.style.left) || 0, top = parseFloat(el.style.top) || 0;
+    if (!media.fixed){
+      media.fixed = true;
+      media.fixedRelX = left / pageEl.clientWidth;
+      media.fixedRelY = top / pageEl.clientHeight;
+    } else {
+      media.fixed = false;
+      const anchor = nearestFlowBlock(media.side, left, top);
+      if (anchor){ media.anchorId = anchor.dataset.blockId; media.dx = left - anchor.offsetLeft; media.dy = top - anchor.offsetTop; }
+    }
+    el.classList.toggle('fixed', media.fixed);
+    persistFlowMedia();
+  }
+
+  function attachFlowMediaDrag(el, media){
+    let dragging = false, offX = 0, offY = 0, pageEl = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.media-del') || e.target.closest('.media-pin') || e.target.closest('.media-resize') || e.target.closest('.media-rotate')) return;
+      if (!artistMode) return;
+      e.stopPropagation();
+      selectFlowMedia(media.id);
+      pushUndo();
+      dragging = true;
+      pageEl = el.closest('.page');
+      const rect = el.getBoundingClientRect();
+      offX = e.clientX - rect.left; offY = e.clientY - rect.top;
+      el.classList.add('dragging');
+      try{ el.setPointerCapture(e.pointerId); } catch(err){}
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!dragging || !pageEl) return;
+      const pageRect = pageEl.getBoundingClientRect();
+      let nx = e.clientX - pageRect.left - offX;
+      let ny = e.clientY - pageRect.top - offY;
+      nx = Math.min(Math.max(nx, 0), pageEl.clientWidth - el.offsetWidth);
+      ny = Math.min(Math.max(ny, 0), pageEl.clientHeight - el.offsetHeight);
+      el.style.left = nx + 'px'; el.style.top = ny + 'px';
+    });
+    el.addEventListener('pointerup', (e) => {
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove('dragging');
+      try{ el.releasePointerCapture(e.pointerId); } catch(err){}
+      const left = parseFloat(el.style.left) || 0, top = parseFloat(el.style.top) || 0;
+      if (media.fixed){
+        media.fixedRelX = left / pageEl.clientWidth;
+        media.fixedRelY = top / pageEl.clientHeight;
+      } else {
+        const anchor = nearestFlowBlock(media.side, left, top);
+        if (anchor){ media.anchorId = anchor.dataset.blockId; media.dx = left - anchor.offsetLeft; media.dy = top - anchor.offsetTop; }
+      }
+      persistFlowMedia();
+    });
+  }
+
+  function attachFlowMediaResize(el, media){
+    const handle = el.querySelector('.media-resize');
+    let resizing = false, startX = 0, startY = 0, startW = 0, startH = 0, ratio = 1, pageEl = null;
+    handle.addEventListener('pointerdown', (e) => {
+      if (!artistMode) return;
+      e.stopPropagation();
+      pushUndo();
+      resizing = true;
+      pageEl = el.closest('.page');
+      startX = e.clientX; startY = e.clientY;
+      startW = media.w; startH = media.h;
+      ratio = startW / startH;
+      try{ handle.setPointerCapture(e.pointerId); } catch(err){}
+      e.preventDefault();
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!resizing) return;
+      let w = Math.max(40, startW + (e.clientX - startX));
+      let h = Math.max(30, startH + (e.clientY - startY));
+      if (e.shiftKey) h = w / ratio;
+      if (pageEl){
+        const left = parseFloat(el.style.left) || 0, top = parseFloat(el.style.top) || 0;
+        w = Math.min(w, pageEl.clientWidth - left);
+        h = Math.min(h, pageEl.clientHeight - top);
+      }
+      media.w = w; media.h = h;
+      el.style.width = w + 'px'; el.style.height = h + 'px';
+      layoutFlowImage(media, el);
+    });
+    handle.addEventListener('pointerup', (e) => {
+      if (!resizing) return;
+      resizing = false;
+      try{ handle.releasePointerCapture(e.pointerId); } catch(err){}
+      persistFlowMedia();
+    });
+  }
+
+  function attachFlowMediaRotate(el, media){
+    const handle = el.querySelector('.media-rotate');
+    let rotating = false, cx = 0, cy = 0, startAngle = 0, startRotation = 0;
+    handle.addEventListener('pointerdown', (e) => {
+      if (!artistMode) return;
+      e.stopPropagation();
+      pushUndo();
+      rotating = true;
+      el.classList.add('rotating');
+      const rect = el.getBoundingClientRect();
+      cx = rect.left + rect.width / 2; cy = rect.top + rect.height / 2;
+      startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+      startRotation = media.rotation || 0;
+      try{ handle.setPointerCapture(e.pointerId); } catch(err){}
+      e.preventDefault();
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!rotating) return;
+      const angle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+      let rot = startRotation + (angle - startAngle);
+      if (e.shiftKey) rot = Math.round(rot / 15) * 15;
+      media.rotation = rot;
+      el.style.transform = `rotate(${rot}deg)`;
+    });
+    handle.addEventListener('pointerup', (e) => {
+      if (!rotating) return;
+      rotating = false;
+      el.classList.remove('rotating');
+      try{ handle.releasePointerCapture(e.pointerId); } catch(err){}
+      persistFlowMedia();
+    });
+  }
+
+  // ---- recadrage (double-clic ouvre le mode, glisser l'image dans son
+  // cadre pour la repositionner, slider flottant pour zoomer) ----
+  let flowCroppingMedia = null, flowCroppingEl = null;
+  const flowCropToolbar = document.createElement('div');
+  flowCropToolbar.className = 'media-crop-toolbar';
+  flowCropToolbar.innerHTML = `<span>Zoom</span><input type="range" min="1" max="4" step="0.02" value="1"><button type="button">Terminé</button>`;
+  document.body.appendChild(flowCropToolbar);
+  const flowCropZoom = flowCropToolbar.querySelector('input');
+  const flowCropDone = flowCropToolbar.querySelector('button');
+
+  function openFlowCropToolbar(el, media){
+    flowCroppingMedia = media; flowCroppingEl = el;
+    el.classList.add('cropping');
+    flowCropZoom.value = media.imgScale || 1;
+    flowCropToolbar.classList.add('open');
+    const rect = el.getBoundingClientRect();
+    flowCropToolbar.style.left = Math.min(rect.left, window.innerWidth - 220) + 'px';
+    flowCropToolbar.style.top = (rect.bottom + 10) + 'px';
+  }
+  function closeFlowCropToolbar(){
+    if (flowCroppingEl) flowCroppingEl.classList.remove('cropping');
+    flowCroppingMedia = null; flowCroppingEl = null;
+    flowCropToolbar.classList.remove('open');
+    persistFlowMedia();
+  }
+  flowCropDone.addEventListener('click', closeFlowCropToolbar);
+  flowCropZoom.addEventListener('input', () => {
+    if (!flowCroppingMedia) return;
+    flowCroppingMedia.imgScale = parseFloat(flowCropZoom.value);
+    layoutFlowImage(flowCroppingMedia, flowCroppingEl);
+  });
+
+  function attachFlowImageCrop(el, media){
+    const img = el.querySelector('.media-img');
+    el.addEventListener('dblclick', (e) => {
+      if (!artistMode) return;
+      e.stopPropagation();
+      pushUndo();
+      openFlowCropToolbar(el, media);
+    });
+    let panning = false, startX = 0, startY = 0, startOffX = 0.5, startOffY = 0.5, slackX = 0, slackY = 0;
+    img.addEventListener('pointerdown', (e) => {
+      if (!el.classList.contains('cropping')) return;
+      e.stopPropagation();
+      panning = true;
+      startX = e.clientX; startY = e.clientY;
+      startOffX = media.imgOffsetX; startOffY = media.imgOffsetY;
+      const nw = img.naturalWidth || 1, nh = img.naturalHeight || 1;
+      const scale = Math.max(el.clientWidth / nw, el.clientHeight / nh) * (media.imgScale || 1);
+      slackX = Math.max(0, nw * scale - el.clientWidth);
+      slackY = Math.max(0, nh * scale - el.clientHeight);
+      try{ img.setPointerCapture(e.pointerId); } catch(err){}
+      e.preventDefault();
+    });
+    img.addEventListener('pointermove', (e) => {
+      if (!panning) return;
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      media.imgOffsetX = slackX > 0 ? Math.min(1, Math.max(0, startOffX - dx / slackX)) : 0.5;
+      media.imgOffsetY = slackY > 0 ? Math.min(1, Math.max(0, startOffY - dy / slackY)) : 0.5;
+      layoutFlowImage(media, el);
+    });
+    img.addEventListener('pointerup', (e) => {
+      panning = false;
+      try{ img.releasePointerCapture(e.pointerId); } catch(err){}
+    });
+  }
+
+  // repositionne un média ancré à son paragraphe actuel ; se retire tout
+  // seul si son ancrage (paragraphe ou page fixe) a disparu de la page affichée
+  function repositionFlowMedia(media){
+    const el = document.getElementById(media.id);
+    if (!el) return;
+    const pageEl = pageElForSide(media.side);
+    let left, top;
+    if (media.fixed){
+      left = (media.fixedRelX || 0) * pageEl.clientWidth;
+      top = (media.fixedRelY || 0) * pageEl.clientHeight;
+    } else {
+      const anchor = flowElForSide(media.side).querySelector(`[data-block-id="${media.anchorId}"]`);
+      if (!anchor){ el.style.display = 'none'; return; } // ancrage hors de la page affichée (pas encore géré, étape suivante)
+      el.style.display = '';
+      left = anchor.offsetLeft + media.dx;
+      top = anchor.offsetTop + media.dy;
+    }
+    el.style.left = left + 'px';
+    el.style.top = top + 'px';
+  }
+  function repositionAllFlowMedia(){
+    flowMediaCache.filter(m => m.spread === spread).forEach(repositionFlowMedia);
+  }
+
+  function renderFlowMediaForSpread(s){
+    anchorLeft.innerHTML = '';
+    anchorRight.innerHTML = '';
+    flowMediaCache.filter(m => m.spread === s).forEach(m => {
+      renderFlowMediaItem(m);
+      repositionFlowMedia(m);
+    });
+  }
+
+  [pageLeft, pageRight].forEach(pageEl => {
+    pageEl.addEventListener('click', (e) => {
+      if (!placingFlowMediaType || !artistMode) return;
+      if (e.target.closest('.media-item')) return;
+      const side = pageEl === pageLeft ? 'left' : 'right';
+      const rect = pageEl.getBoundingClientRect();
+      const x = e.clientX - rect.left, y = e.clientY - rect.top;
+      disarmFlowMediaPlacement();
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/*';
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => createFlowMedia('image', reader.result, side, x, y);
+        reader.readAsDataURL(file);
+      });
+      input.click();
+    }, true);
+  });
+
   // ============ Chargement / sauvegarde du carnet courant ============
   function seedDemoPostits(){
     return []; // plus de post-it de démonstration : le carnet démarre vierge
@@ -4413,6 +4876,14 @@
     const rawBlocks = await storageGet('blocks:' + currentNotebookId, true);
     try{ blocksCache = rawBlocks ? JSON.parse(rawBlocks) : []; }
     catch(e){ blocksCache = []; }
+
+    const rawFlowText = await storageGet('flowText:' + currentNotebookId, true);
+    try{ flowTextCache = rawFlowText ? JSON.parse(rawFlowText) : {}; }
+    catch(e){ flowTextCache = {}; }
+
+    const rawFlowMedia = await storageGet('flowMedia:' + currentNotebookId, true);
+    try{ flowMediaCache = rawFlowMedia ? JSON.parse(rawFlowMedia) : []; }
+    catch(e){ flowMediaCache = []; }
 
     const rawComments = await storageGet('comments:' + currentNotebookId, true);
     try{ commentsCache = rawComments ? JSON.parse(rawComments) : []; }
@@ -5082,9 +5553,10 @@
       if (!tool) return; // bouton sans outil associé (ex: bascule commentaires), géré par son propre écouteur
       if (tool === 'image'){
         // pas de sous-outils : un clic arme directement le placement sur la page
-        setPlacingBlockType(placingBlockType === 'image' ? null : 'image');
-        placingShapeType = null; placingLink = false;
-        btn.classList.toggle('active', placingBlockType === 'image');
+        // (médias ancrés au paragraphe le plus proche — voir armFlowMediaPlacement)
+        if (placingFlowMediaType === 'image') disarmFlowMediaPlacement();
+        else armFlowMediaPlacement('image');
+        btn.classList.toggle('active', placingFlowMediaType === 'image');
         closeArtistPanel();
         return;
       }
