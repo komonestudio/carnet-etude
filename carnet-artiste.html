@@ -1365,7 +1365,6 @@
   body.preview-mode .tools-dock{ display:none !important; }
   body.artist-mode.preview-mode .public-toolbar{ display:flex; }
   body.preview-mode .content-block{ pointer-events:none !important; }
-  body.preview-mode .page-flow{ pointer-events:none !important; }
   body.preview-mode .content-block:hover,
   body.preview-mode .content-block.selected,
   body.preview-mode .content-block.edge-hover{ outline:none !important; }
@@ -1706,29 +1705,6 @@
   .block-text[contenteditable="true"]:empty::before{
     content:"Tapez votre texte…"; opacity:.4; pointer-events:none;
   }
-  /* ---- Flux de texte (plume) : remplace la création de blocs de texte par
-     un texte continu, paginé automatiquement — voir renderFlow() /
-     overflowCascade() / underflowCascade(). Un seul .page-flow par côté,
-     créé une fois en HTML (jamais recréé), dont on bascule juste
-     contentEditable selon le mode. Rendu au-dessus des post-it/marges mais
-     sous les blocs (formes/liens/images), qui restent superposables. */
-  .page-flow{
-    position:relative; z-index:2; width:100%; height:100%;
-    overflow:hidden; outline:none;
-    font-family:'Newsreader', serif; font-size:12.8px; line-height:1.6;
-    color: var(--ink-soft);
-  }
-  .page-flow[contenteditable="true"]{ cursor:text; }
-  .page-flow p{ margin:0 0 8px; }
-  .page-flow b, .page-flow strong{ font-weight:700; }
-  .page-flow i, .page-flow em{ font-style:italic; }
-  .page-flow mark{ background: var(--highlight-color); color:inherit; border-radius:2px; padding:0 1px; }
-  .page-flow[contenteditable="true"]:focus{ box-shadow: inset 0 0 0 1.5px rgba(251,133,0,.25); border-radius:3px; }
-  .page-flow:empty::before{
-    content:"Écrivez ici — le texte se répartit tout seul sur les pages suivantes…";
-    opacity:.35; font-style:italic; pointer-events:none;
-  }
-  .text-drag-ghost{ display:none; } /* outil « glisser pour créer un bloc de texte » retiré (remplacé par le flux) */
   /* ---- image façon InDesign : double conteneur cadre/masque + image ----
      Le cadre (.content-block) définit la zone de recadrage (jamais déformée,
      redimensionnable via la poignée habituelle). À l'intérieur, un masque
@@ -2262,12 +2238,10 @@
       </div>
     </div>
 
-    <!-- ---- TEXTE (flux continu paginé automatiquement — reprend le rendu du
-         mode lecture inclusif ; intègre désormais Lien, déplacé depuis « + ») ---- -->
+    <!-- ---- TEXTE (intègre désormais Lien, déplacé depuis « + ») ---- -->
     <div class="panel-content" id="panelTexte" style="display:none;">
-      <div class="tool-hint" style="margin:0 0 12px;">Écrivez directement dans la page : le texte se répartit automatiquement sur les pages suivantes au fil de la frappe. Sélectionnez du texte pour le styler ci-dessous.</div>
-      <button class="tool-btn" id="flowPageBreakBtn" type="button" style="width:100%; margin-bottom:14px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M4 6h10M4 18h10"/></svg> Saut de page
+      <button class="tool-btn" id="addTextBlockBtn" type="button" style="width:100%; margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Bloc de texte
       </button>
 
       <label>Police</label>
@@ -2340,7 +2314,20 @@
         </button>
       </div>
 
-      <div class="tool-hint">Les réglages ci-dessus s'appliquent au texte sélectionné dans la page. Sans sélection, ils préparent le style du prochain texte tapé.</div>
+      <label>Alignement vertical</label>
+      <div class="tool-row">
+        <button class="tool-btn block-valign-btn selected" data-valign="top" type="button" aria-label="Haut">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16M8 9h8M8 14h5"/></svg>
+        </button>
+        <button class="tool-btn block-valign-btn" data-valign="center" type="button" aria-label="Centré">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16M8 7h8M8 17h5"/></svg>
+        </button>
+        <button class="tool-btn block-valign-btn" data-valign="bottom" type="button" aria-label="Bas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M8 15h8M8 10h5"/></svg>
+        </button>
+      </div>
+
+      <div class="tool-hint">Sélectionnez un bloc existant pour modifier son style en direct, ou créez-en un nouveau. Double-cliquez sur une poignée de redimensionnement pour ajuster automatiquement la hauteur du cadre à son contenu. Maintenez Maj en redimensionnant pour conserver ses proportions. Astuce : Ctrl+D duplique le bloc (texte, image, forme…) actuellement sélectionné sur la même page ; Ctrl+C puis Ctrl+V le copie vers n'importe quelle autre page.</div>
 
       <button class="accordion-row" data-accordion="lien" type="button">
         Lien
@@ -2676,7 +2663,6 @@
               </div>
               <canvas class="draw-canvas" id="drawCanvasLeft"></canvas>
               <div class="page-entries" id="entriesLeft">
-                <div class="page-flow" id="flowLeft" data-side="left" spellcheck="false"></div>
               </div>
 
               <div class="page-number" id="numLeft">2</div>
@@ -2693,7 +2679,6 @@
               <div class="bottom-edge"></div>
               <canvas class="draw-canvas" id="drawCanvasRight"></canvas>
               <div class="page-entries" id="entriesRight">
-                <div class="page-flow" id="flowRight" data-side="right" spellcheck="false"></div>
               </div>
 
               <div class="page-number" id="numRight">3</div>
@@ -2992,11 +2977,8 @@
   let myCreations = [];    // ids créés par ce visiteur/navigateur (local, non partagé)
   let myLikes = [];        // ids des post-it aimés par ce visiteur/navigateur (local, non partagé)
   let seenReplies = {};    // { postitId: nombre de réponses déjà vues } — local, non partagé, sert à notifier les nouvelles réponses de l'artiste
-  let blocksCache = [];    // blocs image/forme/lien posés par l'artiste (partagé) — le texte passe désormais par flowCache
+  let blocksCache = [];    // blocs texte/image posés par l'artiste (partagé)
   let drawingsCache = {};  // traits de dessin, groupés par "spread-side" (partagé)
-  let flowCache = {};      // texte courant, paginé automatiquement : { "spread-side": ["<p>…</p>", …] } (partagé)
-  let manualBreakSides = []; // clés "spread-side" créées par un saut de page manuel — jamais rechargées automatiquement par le sous-remplissage (partagé)
-  let autoCreatedSpreads = []; // numéros de double-page créés automatiquement par un débordement de texte — seuls candidats à la suppression auto si redevenus vides (partagé)
 
   // ============ Historique annuler / rétablir (mode artiste) ============
   // Système par instantané : avant chaque action structurante (création,
@@ -3024,17 +3006,13 @@
     return {
       blocks: JSON.stringify(blocksCache),
       postits: JSON.stringify(postitsCache),
-      drawings: JSON.stringify(drawingsCache),
-      flow: JSON.stringify(flowCache),
-      manualBreaks: JSON.stringify(manualBreakSides)
+      drawings: JSON.stringify(drawingsCache)
     };
   }
   function restoreSnapshot(snap){
     blocksCache = JSON.parse(snap.blocks);
     postitsCache = JSON.parse(snap.postits);
     drawingsCache = JSON.parse(snap.drawings);
-    flowCache = snap.flow ? JSON.parse(snap.flow) : {};
-    manualBreakSides = snap.manualBreaks ? JSON.parse(snap.manualBreaks) : [];
   }
   function pushUndo(){
     if (!artistMode) return;
@@ -3060,8 +3038,7 @@
     await Promise.all([
       persistBlocks(),
       persistPostits(),
-      storageSet('drawings:' + currentNotebookId, JSON.stringify(drawingsCache), true),
-      persistFlow()
+      storageSet('drawings:' + currentNotebookId, JSON.stringify(drawingsCache), true)
     ]);
     // renderSpread() reprend déjà tout le nécessaire pour la double-page
     // courante : post-it, blocs, dessins, boutons de nav — inutile de
@@ -3201,8 +3178,6 @@
   const deletePageBtn = document.getElementById('deletePageBtn');
   const entriesLeft = document.getElementById('entriesLeft');
   const entriesRight = document.getElementById('entriesRight');
-  const flowLeft = document.getElementById('flowLeft');
-  const flowRight = document.getElementById('flowRight');
   const bookViewport = document.getElementById('bookViewport');
   const envelopeScene = document.getElementById('envelopeScene');
   const envelope = document.getElementById('envelope');
@@ -3219,8 +3194,7 @@
       const hasPostit = postitsCache.some(p => p.spread === spread && p.side === side);
       const hasBlock = blocksCache.some(b => b.spread === spread && b.side === side);
       const hasDrawing = (drawingsCache[spread + '-' + side] || []).length > 0;
-      const hasFlow = (flowCache[spread + '-' + side] || []).length > 0;
-      if (!hasPostit && !hasBlock && !hasDrawing && !hasFlow){
+      if (!hasPostit && !hasBlock && !hasDrawing){
         const hint = document.createElement('div');
         hint.className = 'blank-hint';
         hint.textContent = 'Page vierge.';
@@ -3436,15 +3410,8 @@
       numRight.textContent = nums.rightLabel;
       entriesLeft.innerHTML = blankHTML;
       entriesRight.innerHTML = blankHTML;
-      // les deux div .page-flow sont des nœuds persistants (jamais recréés,
-      // pour ne jamais perdre le focus/curseur en cours de frappe) : on les
-      // rattache après le nettoyage plutôt que de les laisser être détruits
-      // par le blankHTML ci-dessus.
-      entriesLeft.appendChild(flowLeft);
-      entriesRight.appendChild(flowRight);
       envelopeScene.style.display = (s === 1) ? 'block' : 'none';
       if (s !== 1) closeEnvelope();
-      renderFlowForSpread();
       renderPostitsForSpread();
       renderBlocksForSpread();
       if (typeof applyBackground === 'function') applyBackground();
@@ -3628,8 +3595,6 @@
     commentsCache = commentsCache.filter(c => c.spread !== toDelete);
     delete drawingsCache[toDelete + '-left'];
     delete drawingsCache[toDelete + '-right'];
-    delete flowCache[toDelete + '-left'];
-    delete flowCache[toDelete + '-right'];
 
     // 2) décaler d'un cran tout ce qui suit la page supprimée
     postitsCache.forEach(p => { if (p.spread > toDelete) p.spread -= 1; });
@@ -3643,22 +3608,6 @@
       shiftedDrawings[(sNum > toDelete ? sNum - 1 : sNum) + '-' + side] = drawingsCache[key];
     });
     drawingsCache = shiftedDrawings;
-    const shiftedFlow = {};
-    Object.keys(flowCache).forEach(key => {
-      const sepIndex = key.lastIndexOf('-');
-      const sNum = parseInt(key.slice(0, sepIndex), 10);
-      const side = key.slice(sepIndex + 1);
-      shiftedFlow[(sNum > toDelete ? sNum - 1 : sNum) + '-' + side] = flowCache[key];
-    });
-    flowCache = shiftedFlow;
-    const shiftKey = (key) => {
-      const sepIndex = key.lastIndexOf('-');
-      const sNum = parseInt(key.slice(0, sepIndex), 10);
-      const side = key.slice(sepIndex + 1);
-      return (sNum > toDelete ? sNum - 1 : sNum) + '-' + side;
-    };
-    manualBreakSides = manualBreakSides.filter(k => !k.startsWith(toDelete + '-')).map(shiftKey);
-    autoCreatedSpreads = autoCreatedSpreads.filter(s => s !== toDelete).map(s => s > toDelete ? s - 1 : s);
 
     totalSpreads -= 1;
     if (spread > totalSpreads) spread = totalSpreads;
@@ -3669,7 +3618,6 @@
     await persistComments();
     await storageSet('drawings:' + currentNotebookId, JSON.stringify(drawingsCache), true);
     await storageSet('totalSpreads:' + currentNotebookId, String(totalSpreads), true);
-    await persistFlow();
 
     renderSpread(spread);
     refreshStorageUsage();
@@ -4406,16 +4354,6 @@
     try{ drawingsCache = rawDrawings ? JSON.parse(rawDrawings) : {}; }
     catch(e){ drawingsCache = {}; }
 
-    const rawFlow = await storageGet('flow:' + currentNotebookId, true);
-    try{ flowCache = rawFlow ? JSON.parse(rawFlow) : {}; }
-    catch(e){ flowCache = {}; }
-    const rawManualBreaks = await storageGet('manualBreaks:' + currentNotebookId, true);
-    try{ manualBreakSides = rawManualBreaks ? JSON.parse(rawManualBreaks) : []; }
-    catch(e){ manualBreakSides = []; }
-    const rawAutoSpreads = await storageGet('autoCreatedSpreads:' + currentNotebookId, true);
-    try{ autoCreatedSpreads = rawAutoSpreads ? JSON.parse(rawAutoSpreads) : []; }
-    catch(e){ autoCreatedSpreads = []; }
-
     const rawTotal = await storageGet('totalSpreads:' + currentNotebookId, true);
     const parsedTotal = rawTotal ? parseInt(rawTotal, 10) : NaN;
     totalSpreads = (!isNaN(parsedTotal) && parsedTotal >= 1) ? parsedTotal : 1;
@@ -4500,10 +4438,6 @@
     previewMode = on;
     document.body.classList.toggle('preview-mode', on);
     document.getElementById('previewExitBtn').style.display = on ? 'flex' : 'none';
-    if (flowLeft && flowRight){
-      flowLeft.contentEditable = (artistMode && !on) ? 'true' : 'false';
-      flowRight.contentEditable = (artistMode && !on) ? 'true' : 'false';
-    }
     if (on){
       closeArtistPanel();
       deselectBlock();
@@ -4585,10 +4519,6 @@
       if (previewMode) setPreviewMode(false);
     }
     publicCarnetDropdown.classList.remove('open');
-    if (flowLeft && flowRight){
-      flowLeft.contentEditable = artistMode ? 'true' : 'false';
-      flowRight.contentEditable = artistMode ? 'true' : 'false';
-    }
     renderPostitsForSpread(); // ré-attache les X de suppression selon le mode
     updateNavButtons();
     fitBookToViewport(); // la réserve d'espace en bas change (dock mobile visible ou non)
@@ -5254,9 +5184,10 @@
     document.body.classList.toggle('placing-text-mode', type === 'text');
   }
 
-  // L'ancien bouton « Bloc de texte » (glisser pour créer un cadre) a été
-  // retiré du panneau : le texte se tape désormais directement dans le flux
-  // de la page (voir plus bas, moteur de pagination automatique).
+  document.getElementById('addTextBlockBtn').addEventListener('click', () => {
+    setPlacingBlockType(placingBlockType === 'text' ? null : 'text');
+    placingShapeType = null; placingLink = false;
+  });
 
   // saisie dans le panneau flottant de texte (création / édition d'un bloc) :
   // compte aussi comme activité d'écriture pour les visiteurs
@@ -5346,37 +5277,10 @@
       const relY = Math.min(Math.max((e.clientY - rect.top) / rect.height, 0), 0.85);
 
       if (placingBlockType === 'image'){
-        // ---- placement simplifié (façon prototype) : un clic sur la page
-        // ouvre directement le sélecteur de fichier, sans passer par le
-        // panneau flottant — l'image est créée dès qu'un fichier est choisi.
+        pendingBlockSpot = { side, spread, relX, relY, type: 'image' };
+        editingBlockId = null;
         setPlacingBlockType(null);
-        const spotSide = side, spotSpread = spread, spotRelX = relX, spotRelY = relY;
-        const input = document.createElement('input');
-        input.type = 'file'; input.accept = 'image/*';
-        input.addEventListener('change', async () => {
-          const file = input.files && input.files[0];
-          if (!file) return;
-          try{
-            const dataUrl = await downscaleImageFile(file, IMAGE_JPEG_QUALITY);
-            const block = {
-              id: genId(), spread: spotSpread, side: spotSide, type: 'image',
-              relX: spotRelX, relY: spotRelY, relW: 0.32, relH: 0.26, rotation: 0,
-              text: '', src: dataUrl,
-              imgScale: 1, imgOffsetX: 0.5, imgOffsetY: 0.5,
-              borderColor: '#000000', borderWidth: 0, borderStyle: 'solid', radius: 0
-            };
-            pushUndo();
-            blocksCache.push(block);
-            await persistBlocks();
-            if (block.spread === spread) renderBlocksForSpread();
-            refreshStorageUsage();
-            selectBlock(block.id);
-          } catch(err){
-            console.error('Image : ajout impossible', err);
-            showToast("Impossible d'ajouter cette image.", true);
-          }
-        });
-        input.click();
+        openBlockPanel(e.clientX, e.clientY, 'image', null);
         return;
       }
       if (placingShapeType){
@@ -5476,50 +5380,25 @@
   }
   blockPanelClose.addEventListener('click', closeBlockPanel);
 
-  let flowStyleUndoPending = false;
   artistPanel.querySelectorAll('.block-align-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       artistPanel.querySelectorAll('.block-align-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       blockAlign = btn.dataset.align;
-      const side = currentFlowSideFromSelection();
-      if (side){
-        pushUndo();
-        const cmdMap = { left: 'Left', center: 'Center', right: 'Right', justify: 'Full' };
-        try{ document.execCommand('justify' + (cmdMap[blockAlign] || 'Left'), false, null); } catch(e){}
-        scheduleFlowRepagination(side);
-      } else {
-        applyTextStyleToSelected();
-      }
+      applyTextStyleToSelected();
       styleUndoPending = false; // clic discret : la prochaine action ouvre une nouvelle étape
     });
   });
-  // Mise en forme par sélection de texte : s'appuie sur execCommand (natif
-  // du navigateur), qui gère correctement la détection gras-déjà-actif/
-  // désactivation, contrairement à une réimplémentation maison. S'applique
-  // en priorité au flux de texte (nouvelle écriture principale) ; repli sur
-  // l'édition « in-place » d'un ancien bloc de texte hérité, pour la
-  // compatibilité avec des carnets créés avant ce changement.
+  // Mise en forme par sélection de texte, en cours d'édition : s'appuie sur
+  // execCommand (natif du navigateur), qui gère correctement la détection
+  // gras-déjà-actif/désactivation, contrairement à une réimplémentation
+  // maison. Le HTML produit (parfois incohérent selon le navigateur — STRONG
+  // vs B, SPAN à la place de MARK pour le surlignage...) est nettoyé une
+  // fois pour de bon à la sortie d'édition, voir normalizeRichHtml().
   function trySelectionFormat(cmd){
+    if (!editingTextBlockId) return false;
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
-    const anchorEl = sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement);
-    const flowEl = anchorEl && anchorEl.closest ? anchorEl.closest('.page-flow') : null;
-    if (flowEl){
-      try{
-        if (cmd === 'highlight'){
-          if (!document.execCommand('hiliteColor', false, 'rgba(247,229,139,.55)')){
-            document.execCommand('backColor', false, 'rgba(247,229,139,.55)');
-          }
-        } else {
-          document.execCommand(cmd, false, null);
-        }
-      } catch(e){ return false; }
-      pingArtistTyping();
-      scheduleFlowRepagination(flowEl.dataset.side);
-      return true;
-    }
-    if (!editingTextBlockId) return false;
     const el = document.getElementById(editingTextBlockId);
     const txt = el?.querySelector('.block-text');
     if (!txt || !txt.contains(sel.anchorNode)) return false;
@@ -5551,31 +5430,22 @@
       const btn = artistPanel.querySelector(`.block-format-btn[data-format="${cmd}"]`);
       if (btn){ btn.classList.toggle('selected', on); btn.setAttribute('aria-pressed', String(on)); }
     });
-    const alignCmdMap = { left: 'Left', center: 'Center', right: 'Right', justify: 'Full' };
-    Object.keys(alignCmdMap).forEach(a => {
-      let on = false;
-      try{ on = document.queryCommandState('justify' + alignCmdMap[a]); } catch(e){}
-      const btn = artistPanel.querySelector(`.block-align-btn[data-align="${a}"]`);
-      if (btn) btn.classList.toggle('selected', on);
-    });
   }
   document.addEventListener('selectionchange', () => {
-    const sel = window.getSelection();
-    const anchorEl = sel && sel.anchorNode ? (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement) : null;
-    const inFlow = anchorEl && anchorEl.closest ? anchorEl.closest('.page-flow') : null;
-    if (inFlow){ updateFormatButtonsFromSelection(); return; }
     if (!editingTextBlockId) return;
     const el = document.getElementById(editingTextBlockId);
     const txt = el?.querySelector('.block-text');
+    const sel = window.getSelection();
     if (txt && sel && sel.anchorNode && txt.contains(sel.anchorNode)) updateFormatButtonsFromSelection();
   });
 
   artistPanel.querySelectorAll('.block-format-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.format;
-      // priorité à la sélection de texte (flux ou ancien bloc en cours
-      // d'édition — comportement attendu d'un traitement de texte) ; sinon,
-      // repli sur la bascule de tout le bloc hérité sélectionné.
+      // priorité à la sélection de texte en cours d'édition (comportement
+      // attendu d'un traitement de texte) ; sinon, repli sur la bascule de
+      // tout le bloc (utile pour préparer le style avant de taper, ou pour
+      // un court texte entièrement en gras/italique).
       if (trySelectionFormat(key)) return;
       const newVal = !{ bold: blockBold, italic: blockItalic, underline: blockUnderline, highlight: blockHighlight }[key];
       if (key === 'bold') blockBold = newVal;
@@ -5597,60 +5467,21 @@
       styleUndoPending = false;
     });
   });
-
-  // ---- applique taille / police / interlignage / interlettrage / couleur
-  // au texte du flux sélectionné (execCommand pour taille/police/couleur,
-  // par paragraphe pour interlignage/interlettrage — pas d'équivalent
-  // natif). Si aucune sélection n'est dans le flux, repli sur l'ancien
-  // système de bloc sélectionné (compatibilité). ----
-  function applyFlowFontSize(pt){
-    let ok = false;
-    try{ ok = document.execCommand('fontSize', false, '7'); } catch(e){}
-    if (!ok) return false;
-    document.querySelectorAll('.page-flow font[size="7"]').forEach(elx => {
-      const span = document.createElement('span');
-      span.style.fontSize = pt + 'pt';
-      while (elx.firstChild) span.appendChild(elx.firstChild);
-      elx.replaceWith(span);
-    });
-    return true;
-  }
-  function applyFlowParagraphStyle(prop, value){
-    const paras = getSelectedFlowParagraphs();
-    if (!paras.length) return false;
-    paras.forEach(p => { p.style[prop] = value; });
-    return true;
-  }
-  function applyTextStyleUniversal(){
-    const side = currentFlowSideFromSelection();
-    if (side){
-      if (!flowStyleUndoPending){ pushUndo(); flowStyleUndoPending = true; }
-      applyFlowFontSize(parseInt(blockSizeInput.value, 10) || 14);
-      try{ document.execCommand('fontName', false, blockFontFamily.value.replace(/'/g, '')); } catch(e){}
-      try{ document.execCommand('foreColor', false, blockColorInput.value); } catch(e){}
-      applyFlowParagraphStyle('lineHeight', blockLineHeight.value);
-      applyFlowParagraphStyle('letterSpacing', (parseFloat(blockLetterSpacing.value) || 0) + 'px');
-      pingArtistTyping();
-      scheduleFlowRepagination(side);
-      return;
-    }
-    applyTextStyleToSelected();
-  }
-  blockSizeUp.addEventListener('click', () => { blockSizeInput.value = Math.min(72, (parseInt(blockSizeInput.value, 10) || 14) + 1); applyTextStyleUniversal(); styleUndoPending = false; flowStyleUndoPending = false; });
-  blockSizeDown.addEventListener('click', () => { blockSizeInput.value = Math.max(8, (parseInt(blockSizeInput.value, 10) || 14) - 1); applyTextStyleUniversal(); styleUndoPending = false; flowStyleUndoPending = false; });
-  lineHeightUp.addEventListener('click', () => { blockLineHeight.value = (Math.min(3, (parseFloat(blockLineHeight.value) || 1.6) + 0.1)).toFixed(1); applyTextStyleUniversal(); });
-  lineHeightDown.addEventListener('click', () => { blockLineHeight.value = (Math.max(1, (parseFloat(blockLineHeight.value) || 1.6) - 0.1)).toFixed(1); applyTextStyleUniversal(); });
-  letterSpacingUp.addEventListener('click', () => { blockLetterSpacing.value = (Math.min(10, (parseFloat(blockLetterSpacing.value) || 0) + 0.5)); applyTextStyleUniversal(); });
-  letterSpacingDown.addEventListener('click', () => { blockLetterSpacing.value = (Math.max(-2, (parseFloat(blockLetterSpacing.value) || 0) - 0.5)); applyTextStyleUniversal(); });
-  blockFontFamily.addEventListener('change', applyTextStyleUniversal);
-  blockSizeInput.addEventListener('input', applyTextStyleUniversal);
-  blockLineHeight.addEventListener('input', applyTextStyleUniversal);
-  blockLetterSpacing.addEventListener('input', applyTextStyleUniversal);
-  blockColorInput.addEventListener('input', applyTextStyleUniversal);
+  blockSizeUp.addEventListener('click', () => { blockSizeInput.value = Math.min(72, (parseInt(blockSizeInput.value, 10) || 14) + 1); applyTextStyleToSelected(); styleUndoPending = false; });
+  blockSizeDown.addEventListener('click', () => { blockSizeInput.value = Math.max(8, (parseInt(blockSizeInput.value, 10) || 14) - 1); applyTextStyleToSelected(); styleUndoPending = false; });
+  lineHeightUp.addEventListener('click', () => { blockLineHeight.value = (Math.min(3, (parseFloat(blockLineHeight.value) || 1.6) + 0.1)).toFixed(1); applyTextStyleToSelected(); });
+  lineHeightDown.addEventListener('click', () => { blockLineHeight.value = (Math.max(1, (parseFloat(blockLineHeight.value) || 1.6) - 0.1)).toFixed(1); applyTextStyleToSelected(); });
+  letterSpacingUp.addEventListener('click', () => { blockLetterSpacing.value = (Math.min(10, (parseFloat(blockLetterSpacing.value) || 0) + 0.5)); applyTextStyleToSelected(); });
+  letterSpacingDown.addEventListener('click', () => { blockLetterSpacing.value = (Math.max(-2, (parseFloat(blockLetterSpacing.value) || 0) - 0.5)); applyTextStyleToSelected(); });
+  blockFontFamily.addEventListener('change', applyTextStyleToSelected);
+  blockSizeInput.addEventListener('input', applyTextStyleToSelected);
+  blockLineHeight.addEventListener('input', applyTextStyleToSelected);
+  blockLetterSpacing.addEventListener('input', applyTextStyleToSelected);
+  blockColorInput.addEventListener('input', applyTextStyleToSelected);
   // au relâchement d'un contrôle, le prochain ajustement ouvrira une nouvelle
   // étape d'historique plutôt que de continuer à fusionner avec celui-ci
   [blockFontFamily, blockSizeInput, blockLineHeight, blockLetterSpacing, blockColorInput]
-    .forEach(inp => inp.addEventListener('change', () => { styleUndoPending = false; flowStyleUndoPending = false; }));
+    .forEach(inp => inp.addEventListener('change', () => { styleUndoPending = false; }));
 
   function currentTextStyle(){
     return {
@@ -5803,279 +5634,6 @@
   });
 
   function persistBlocks(){ return storageSet('blocks:' + currentNotebookId, JSON.stringify(blocksCache), true); }
-
-  // ============ FLUX DE TEXTE (plume) — pagination automatique ============
-  // Remplace la création de blocs de texte par un texte continu, tapé
-  // directement dans la page (comme un traitement de texte), qui se répartit
-  // tout seul sur les doubles-pages suivantes au fil de la frappe — même
-  // esprit que le rendu du mode lecture inclusif (à plat, dans l'ordre
-  // naturel de lecture), porté depuis le prototype (prototype-pagination).
-  //
-  // Modèle de données : flowCache["spread-side"] = tableau de paragraphes
-  // (chacun le outerHTML complet d'un <p>…</p>), dans l'ordre de lecture.
-  // Seuls les deux côtés de la double-page AFFICHÉE (flowLeft/flowRight,
-  // deux nœuds DOM permanents, jamais recréés) reflètent le DOM réel ; tout
-  // le reste du carnet n'existe qu'en données, mesuré hors-écran au besoin.
-  function sideKey(sp, side){ return sp + '-' + side; }
-
-  // ---- mesureur hors-écran : détermine si un tableau de paragraphes tient
-  // dans une zone de W×H sans avoir à l'afficher (page non visible) ----
-  let flowMeasurerEl = null;
-  function getFlowMeasurer(){
-    if (flowMeasurerEl) return flowMeasurerEl;
-    flowMeasurerEl = document.createElement('div');
-    flowMeasurerEl.className = 'page-flow';
-    Object.assign(flowMeasurerEl.style, { position: 'fixed', visibility: 'hidden', pointerEvents: 'none', top: '-9999px', left: '-9999px' });
-    document.body.appendChild(flowMeasurerEl);
-    return flowMeasurerEl;
-  }
-  function flowOverflows(arr, w, h){
-    const m = getFlowMeasurer();
-    m.style.width = w + 'px';
-    m.style.height = h + 'px';
-    m.innerHTML = arr.join('');
-    return m.scrollHeight > m.clientHeight + 1;
-  }
-
-  // ---- lecture du DOM réel (côté affiché) vers un tableau de paragraphes ----
-  function normalizeFlowDom(el){
-    Array.from(el.childNodes).forEach(node => {
-      if (node.nodeType === 3 && node.textContent !== ''){
-        const p = document.createElement('p');
-        el.insertBefore(p, node);
-        p.appendChild(node);
-      } else if (node.nodeType === 3){
-        el.removeChild(node);
-      }
-    });
-  }
-  function domToArray(el){
-    normalizeFlowDom(el);
-    return Array.from(el.children).map(c => c.outerHTML);
-  }
-
-  // ---- adresse du côté suivant dans l'ordre de lecture (gauche → droite →
-  // double-page suivante), créant au besoin une nouvelle double-page ----
-  async function nextSideOf(sp, side, createIfMissing){
-    if (side === 'left') return { spread: sp, side: 'right' };
-    const ns = sp + 1;
-    if (ns > totalSpreads){
-      if (!createIfMissing) return null;
-      totalSpreads += 1;
-      autoCreatedSpreads.push(totalSpreads);
-      await storageSet('totalSpreads:' + currentNotebookId, String(totalSpreads), true);
-    }
-    return { spread: ns, side: 'left' };
-  }
-
-  // ---- retire une double-page ajoutée automatiquement par le flux si elle
-  // redevient totalement vide (texte, blocs, post-it, dessins) — jamais une
-  // double-page créée par l'artiste ("+ page" ou saut de page manuel) ----
-  async function maybeShrinkTrailingSpread(sp){
-    if (sp !== totalSpreads || totalSpreads <= 1) return false;
-    if (!autoCreatedSpreads.includes(sp)) return false;
-    const leftEmpty = !(flowCache[sideKey(sp, 'left')] || []).length;
-    const rightEmpty = !(flowCache[sideKey(sp, 'right')] || []).length;
-    if (!leftEmpty || !rightEmpty) return false;
-    if (blocksCache.some(b => b.spread === sp)) return false;
-    if (postitsCache.some(p => p.spread === sp)) return false;
-    if ((drawingsCache[sp + '-left'] || []).length || (drawingsCache[sp + '-right'] || []).length) return false;
-    delete flowCache[sideKey(sp, 'left')];
-    delete flowCache[sideKey(sp, 'right')];
-    totalSpreads -= 1;
-    autoCreatedSpreads = autoCreatedSpreads.filter(x => x !== sp);
-    manualBreakSides = manualBreakSides.filter(k => k !== sideKey(sp, 'left') && k !== sideKey(sp, 'right'));
-    await storageSet('totalSpreads:' + currentNotebookId, String(totalSpreads), true);
-    return true;
-  }
-
-  // ---- cascade de débordement : pousse les derniers paragraphes vers la
-  // suite tant que le côté déborde ----
-  async function overflowCascadeData(sp, side, w, h){
-    let cur = { spread: sp, side };
-    let guard = 0;
-    while (guard++ < 400){
-      const key = sideKey(cur.spread, cur.side);
-      const arr = flowCache[key] || [];
-      if (!arr.length || !flowOverflows(arr, w, h)) break;
-      const moved = arr.pop();
-      flowCache[key] = arr;
-      const nxt = await nextSideOf(cur.spread, cur.side, true);
-      const nxtKey = sideKey(nxt.spread, nxt.side);
-      flowCache[nxtKey] = [moved].concat(flowCache[nxtKey] || []);
-      cur = nxt;
-    }
-  }
-  // ---- cascade de place libre : ramène les premiers paragraphes de la
-  // suite tant qu'ils tiennent — jamais à travers un saut de page manuel ----
-  async function underflowCascadeData(sp, side, w, h){
-    let cur = { spread: sp, side };
-    let guard = 0;
-    while (guard++ < 400){
-      const nxt = await nextSideOf(cur.spread, cur.side, false);
-      if (!nxt) break;
-      const curKey = sideKey(cur.spread, cur.side);
-      const nxtKey = sideKey(nxt.spread, nxt.side);
-      if (manualBreakSides.includes(nxtKey)) break;
-      let pulledAny = false;
-      while ((flowCache[nxtKey] || []).length){
-        const candidate = flowCache[nxtKey][0];
-        const testArr = (flowCache[curKey] || []).concat([candidate]);
-        if (flowOverflows(testArr, w, h)) break;
-        flowCache[curKey] = testArr;
-        flowCache[nxtKey].shift();
-        pulledAny = true;
-      }
-      const shrank = await maybeShrinkTrailingSpread(nxt.spread);
-      if (shrank) break;
-      if (!pulledAny) break;
-      cur = nxt;
-    }
-  }
-
-  // ---- (re)affiche les deux côtés de la double-page actuellement visible
-  // depuis flowCache ; contentEditable selon le mode ----
-  function renderFlowForSpread(){
-    const editable = artistMode ? 'true' : 'false';
-    flowLeft.contentEditable = editable;
-    flowRight.contentEditable = editable;
-    flowLeft.innerHTML = (flowCache[sideKey(spread, 'left')] || []).join('');
-    flowRight.innerHTML = (flowCache[sideKey(spread, 'right')] || []).join('');
-  }
-  function placeCursorAtEnd(el){
-    try{
-      el.focus();
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    } catch(e){ /* focus impossible (élément vide/détaché) : sans gravité */ }
-  }
-  function persistFlow(){
-    return Promise.all([
-      storageSet('flow:' + currentNotebookId, JSON.stringify(flowCache), true),
-      storageSet('manualBreaks:' + currentNotebookId, JSON.stringify(manualBreakSides), true),
-      storageSet('autoCreatedSpreads:' + currentNotebookId, JSON.stringify(autoCreatedSpreads), true)
-    ]);
-  }
-
-  // ---- point d'entrée : appelé après chaque frappe (et après chaque
-  // changement de style appliqué depuis le panneau) ----
-  let flowDebounceTimer = null;
-  function scheduleFlowRepagination(side){
-    if (!side) return;
-    clearTimeout(flowDebounceTimer);
-    flowDebounceTimer = setTimeout(() => { repaginateAndPersist(side); }, 180);
-  }
-  async function repaginateAndPersist(editedSide){
-    if (!artistMode || !isInterior(spread)) return;
-    const activeEl = editedSide === 'left' ? flowLeft : flowRight;
-    const hadFocus = document.activeElement === activeEl;
-    const w = flowLeft.clientWidth || 300, h = flowLeft.clientHeight || 400;
-    flowCache[sideKey(spread, 'left')] = domToArray(flowLeft);
-    flowCache[sideKey(spread, 'right')] = domToArray(flowRight);
-    await overflowCascadeData(spread, editedSide, w, h);
-    await underflowCascadeData(spread, editedSide, w, h);
-    flowLeft.innerHTML = (flowCache[sideKey(spread, 'left')] || []).join('');
-    flowRight.innerHTML = (flowCache[sideKey(spread, 'right')] || []).join('');
-    if (hadFocus) placeCursorAtEnd(activeEl);
-    await persistFlow();
-    refreshStorageUsage();
-    if (typeof updateBlankHints === 'function') updateBlankHints();
-  }
-
-  let flowTypingUndoPending = false;
-  let flowTypingUndoTimer = null;
-  [flowLeft, flowRight].forEach(el => {
-    el.addEventListener('beforeinput', () => {
-      if (!artistMode) return;
-      if (!flowTypingUndoPending){ pushUndo(); flowTypingUndoPending = true; }
-      clearTimeout(flowTypingUndoTimer);
-      flowTypingUndoTimer = setTimeout(() => { flowTypingUndoPending = false; }, 1000);
-    });
-    el.addEventListener('input', () => {
-      if (!artistMode) return;
-      pingArtistTyping();
-      normalizeFlowDom(el);
-      scheduleFlowRepagination(el.dataset.side);
-    });
-  });
-
-  function currentFlowSideFromSelection(){
-    const sel = window.getSelection();
-    const node = sel && sel.anchorNode;
-    const el = node && (node.nodeType === 1 ? node : node.parentElement);
-    const flow = el && el.closest ? el.closest('.page-flow') : null;
-    return flow ? flow.dataset.side : null;
-  }
-  function getSelectedFlowParagraphs(){
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return [];
-    const range = sel.getRangeAt(0);
-    const node = range.commonAncestorContainer;
-    const el = node.nodeType === 1 ? node : node.parentElement;
-    const flow = el && el.closest ? el.closest('.page-flow') : null;
-    if (!flow) return [];
-    return Array.from(flow.children).filter(p => range.intersectsNode(p));
-  }
-
-  // ---- saut de page manuel : scinde le flux à la position du curseur, le
-  // reste bascule sur le côté suivant, marqué « manuel » (jamais rechargé
-  // automatiquement par le sous-remplissage) ----
-  document.getElementById('flowPageBreakBtn').addEventListener('click', async () => {
-    if (!artistMode || !isInterior(spread)) return;
-    const active = document.activeElement;
-    const el = (active === flowLeft || active === flowRight) ? active : null;
-    if (!el){ showToast('Cliquez dans le texte, à l\'endroit du saut souhaité.', true); return; }
-    const side = el.dataset.side;
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    let block = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentNode;
-    while (block && block.parentNode !== el) block = block.parentNode;
-    if (!block) { showToast('Placez le curseur dans un paragraphe existant.', true); return; }
-    pushUndo();
-    const preRange = document.createRange();
-    preRange.selectNodeContents(block);
-    preRange.setEnd(range.startContainer, range.startOffset);
-    const atStart = preRange.toString().length === 0;
-    const movingNodes = [];
-    if (!atStart){
-      const tailRange = document.createRange();
-      tailRange.setStart(range.startContainer, range.startOffset);
-      tailRange.setEndAfter(block.lastChild);
-      const frag = tailRange.extractContents();
-      const tailBlock = document.createElement(block.tagName || 'P');
-      tailBlock.appendChild(frag);
-      if (!tailBlock.hasChildNodes()) tailBlock.innerHTML = '<br>';
-      movingNodes.push(tailBlock);
-      let sib = block.nextSibling;
-      while (sib){ const n = sib.nextSibling; movingNodes.push(sib); sib = n; }
-    } else {
-      let sib = block;
-      while (sib){ const n = sib.nextSibling; movingNodes.push(sib); sib = n; }
-    }
-    if (!movingNodes.length){ showToast('Rien à faire basculer après le curseur.'); return; }
-    movingNodes.forEach(n => { if (n.parentNode === el) el.removeChild(n); });
-    if (!el.firstChild) el.appendChild(document.createElement('p'));
-    flowCache[sideKey(spread, side)] = domToArray(el);
-    const nxt = await nextSideOf(spread, side, true);
-    const nxtKey = sideKey(nxt.spread, nxt.side);
-    const movedHtml = movingNodes.map(n => n.nodeType === 1 ? n.outerHTML : '').filter(Boolean);
-    flowCache[nxtKey] = movedHtml.concat(flowCache[nxtKey] || []);
-    if (!manualBreakSides.includes(nxtKey)) manualBreakSides.push(nxtKey);
-    const w = flowLeft.clientWidth || 300, h = flowLeft.clientHeight || 400;
-    await overflowCascadeData(nxt.spread, nxt.side, w, h);
-    flowLeft.innerHTML = (flowCache[sideKey(spread, 'left')] || []).join('');
-    flowRight.innerHTML = (flowCache[sideKey(spread, 'right')] || []).join('');
-    await persistFlow();
-    refreshStorageUsage();
-    if (typeof updateBlankHints === 'function') updateBlankHints();
-    closeArtistPanel();
-    showToast('Saut de page inséré — la suite reprend sur la page suivante.');
-  });
 
   function renderBlocksForSpread(){
     document.querySelectorAll('.content-block').forEach(n => n.remove());
@@ -7189,17 +6747,7 @@
       }
     }
 
-    // texte du flux (nouvelle écriture principale) : ajouté d'abord, dans
-    // l'ordre déjà stocké (haut en bas), avant les blocs/post-it superposés
-    const flowParas = flowCache[s + '-' + side] || [];
-    if (flowParas.length){
-      hasContent = true;
-      const wrap = document.createElement('div');
-      wrap.innerHTML = flowParas.join('');
-      Array.from(wrap.children).forEach(p => article.appendChild(p));
-    }
-
-    // blocs (image) et post-it de cette page, remis dans l'ordre
+    // blocs (texte/image) et post-it de cette page, remis dans l'ordre
     // naturel de lecture (haut en bas, puis gauche à droite en cas d'égalité)
     const items = [];
     blocksCache.filter(b => b.spread === s && b.side === side && (b.type === 'text' || b.type === 'image'))
@@ -7506,12 +7054,11 @@
     const postitsBytes = new Blob([JSON.stringify(postitsCache)]).size;
     const drawingsBytes = new Blob([JSON.stringify(drawingsCache)]).size;
     const commentsBytes = new Blob([JSON.stringify(commentsCache)]).size;
-    const flowBytes = new Blob([JSON.stringify(flowCache)]).size;
-    const ratio = Math.min(1, Math.max(blocksBytes, flowBytes) / STORAGE_KEY_LIMIT);
+    const ratio = Math.min(1, blocksBytes / STORAGE_KEY_LIMIT);
     fill.style.width = (ratio * 100) + '%';
     fill.classList.toggle('warn', ratio > 0.8);
-    label.textContent = `Poids du carnet : ${formatBytes(blocksBytes + postitsBytes + drawingsBytes + commentsBytes + flowBytes)}` +
-      (ratio > 0.8 ? ` — attention, le texte ou les images approchent la limite de ${formatBytes(STORAGE_KEY_LIMIT)}` : '');
+    label.textContent = `Poids du carnet : ${formatBytes(blocksBytes + postitsBytes + drawingsBytes + commentsBytes)}` +
+      (ratio > 0.8 ? ` — attention, les blocs (images) approchent la limite de ${formatBytes(STORAGE_KEY_LIMIT)}` : '');
   }
 
   // ============ Notification visiteur : réponse de l'artiste ============
