@@ -1365,6 +1365,7 @@
   body.preview-mode .tools-dock{ display:none !important; }
   body.artist-mode.preview-mode .public-toolbar{ display:flex; }
   body.preview-mode .content-block{ pointer-events:none !important; }
+  body.preview-mode .page-flow{ pointer-events:none !important; }
   body.preview-mode .content-block:hover,
   body.preview-mode .content-block.selected,
   body.preview-mode .content-block.edge-hover{ outline:none !important; }
@@ -2995,6 +2996,7 @@
   let drawingsCache = {};  // traits de dessin, groupés par "spread-side" (partagé)
   let flowCache = {};      // texte courant, paginé automatiquement : { "spread-side": ["<p>…</p>", …] } (partagé)
   let manualBreakSides = []; // clés "spread-side" créées par un saut de page manuel — jamais rechargées automatiquement par le sous-remplissage (partagé)
+  let autoCreatedSpreads = []; // numéros de double-page créés automatiquement par un débordement de texte — seuls candidats à la suppression auto si redevenus vides (partagé)
 
   // ============ Historique annuler / rétablir (mode artiste) ============
   // Système par instantané : avant chaque action structurante (création,
@@ -3626,6 +3628,8 @@
     commentsCache = commentsCache.filter(c => c.spread !== toDelete);
     delete drawingsCache[toDelete + '-left'];
     delete drawingsCache[toDelete + '-right'];
+    delete flowCache[toDelete + '-left'];
+    delete flowCache[toDelete + '-right'];
 
     // 2) décaler d'un cran tout ce qui suit la page supprimée
     postitsCache.forEach(p => { if (p.spread > toDelete) p.spread -= 1; });
@@ -3639,6 +3643,22 @@
       shiftedDrawings[(sNum > toDelete ? sNum - 1 : sNum) + '-' + side] = drawingsCache[key];
     });
     drawingsCache = shiftedDrawings;
+    const shiftedFlow = {};
+    Object.keys(flowCache).forEach(key => {
+      const sepIndex = key.lastIndexOf('-');
+      const sNum = parseInt(key.slice(0, sepIndex), 10);
+      const side = key.slice(sepIndex + 1);
+      shiftedFlow[(sNum > toDelete ? sNum - 1 : sNum) + '-' + side] = flowCache[key];
+    });
+    flowCache = shiftedFlow;
+    const shiftKey = (key) => {
+      const sepIndex = key.lastIndexOf('-');
+      const sNum = parseInt(key.slice(0, sepIndex), 10);
+      const side = key.slice(sepIndex + 1);
+      return (sNum > toDelete ? sNum - 1 : sNum) + '-' + side;
+    };
+    manualBreakSides = manualBreakSides.filter(k => !k.startsWith(toDelete + '-')).map(shiftKey);
+    autoCreatedSpreads = autoCreatedSpreads.filter(s => s !== toDelete).map(s => s > toDelete ? s - 1 : s);
 
     totalSpreads -= 1;
     if (spread > totalSpreads) spread = totalSpreads;
@@ -3649,6 +3669,7 @@
     await persistComments();
     await storageSet('drawings:' + currentNotebookId, JSON.stringify(drawingsCache), true);
     await storageSet('totalSpreads:' + currentNotebookId, String(totalSpreads), true);
+    await persistFlow();
 
     renderSpread(spread);
     refreshStorageUsage();
@@ -4385,6 +4406,16 @@
     try{ drawingsCache = rawDrawings ? JSON.parse(rawDrawings) : {}; }
     catch(e){ drawingsCache = {}; }
 
+    const rawFlow = await storageGet('flow:' + currentNotebookId, true);
+    try{ flowCache = rawFlow ? JSON.parse(rawFlow) : {}; }
+    catch(e){ flowCache = {}; }
+    const rawManualBreaks = await storageGet('manualBreaks:' + currentNotebookId, true);
+    try{ manualBreakSides = rawManualBreaks ? JSON.parse(rawManualBreaks) : []; }
+    catch(e){ manualBreakSides = []; }
+    const rawAutoSpreads = await storageGet('autoCreatedSpreads:' + currentNotebookId, true);
+    try{ autoCreatedSpreads = rawAutoSpreads ? JSON.parse(rawAutoSpreads) : []; }
+    catch(e){ autoCreatedSpreads = []; }
+
     const rawTotal = await storageGet('totalSpreads:' + currentNotebookId, true);
     const parsedTotal = rawTotal ? parseInt(rawTotal, 10) : NaN;
     totalSpreads = (!isNaN(parsedTotal) && parsedTotal >= 1) ? parsedTotal : 1;
@@ -4469,6 +4500,10 @@
     previewMode = on;
     document.body.classList.toggle('preview-mode', on);
     document.getElementById('previewExitBtn').style.display = on ? 'flex' : 'none';
+    if (flowLeft && flowRight){
+      flowLeft.contentEditable = (artistMode && !on) ? 'true' : 'false';
+      flowRight.contentEditable = (artistMode && !on) ? 'true' : 'false';
+    }
     if (on){
       closeArtistPanel();
       deselectBlock();
@@ -4550,6 +4585,10 @@
       if (previewMode) setPreviewMode(false);
     }
     publicCarnetDropdown.classList.remove('open');
+    if (flowLeft && flowRight){
+      flowLeft.contentEditable = artistMode ? 'true' : 'false';
+      flowRight.contentEditable = artistMode ? 'true' : 'false';
+    }
     renderPostitsForSpread(); // ré-attache les X de suppression selon le mode
     updateNavButtons();
     fitBookToViewport(); // la réserve d'espace en bas change (dock mobile visible ou non)
@@ -5437,25 +5476,50 @@
   }
   blockPanelClose.addEventListener('click', closeBlockPanel);
 
+  let flowStyleUndoPending = false;
   artistPanel.querySelectorAll('.block-align-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       artistPanel.querySelectorAll('.block-align-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       blockAlign = btn.dataset.align;
-      applyTextStyleToSelected();
+      const side = currentFlowSideFromSelection();
+      if (side){
+        pushUndo();
+        const cmdMap = { left: 'Left', center: 'Center', right: 'Right', justify: 'Full' };
+        try{ document.execCommand('justify' + (cmdMap[blockAlign] || 'Left'), false, null); } catch(e){}
+        scheduleFlowRepagination(side);
+      } else {
+        applyTextStyleToSelected();
+      }
       styleUndoPending = false; // clic discret : la prochaine action ouvre une nouvelle étape
     });
   });
-  // Mise en forme par sélection de texte, en cours d'édition : s'appuie sur
-  // execCommand (natif du navigateur), qui gère correctement la détection
-  // gras-déjà-actif/désactivation, contrairement à une réimplémentation
-  // maison. Le HTML produit (parfois incohérent selon le navigateur — STRONG
-  // vs B, SPAN à la place de MARK pour le surlignage...) est nettoyé une
-  // fois pour de bon à la sortie d'édition, voir normalizeRichHtml().
+  // Mise en forme par sélection de texte : s'appuie sur execCommand (natif
+  // du navigateur), qui gère correctement la détection gras-déjà-actif/
+  // désactivation, contrairement à une réimplémentation maison. S'applique
+  // en priorité au flux de texte (nouvelle écriture principale) ; repli sur
+  // l'édition « in-place » d'un ancien bloc de texte hérité, pour la
+  // compatibilité avec des carnets créés avant ce changement.
   function trySelectionFormat(cmd){
-    if (!editingTextBlockId) return false;
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
+    const anchorEl = sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement);
+    const flowEl = anchorEl && anchorEl.closest ? anchorEl.closest('.page-flow') : null;
+    if (flowEl){
+      try{
+        if (cmd === 'highlight'){
+          if (!document.execCommand('hiliteColor', false, 'rgba(247,229,139,.55)')){
+            document.execCommand('backColor', false, 'rgba(247,229,139,.55)');
+          }
+        } else {
+          document.execCommand(cmd, false, null);
+        }
+      } catch(e){ return false; }
+      pingArtistTyping();
+      scheduleFlowRepagination(flowEl.dataset.side);
+      return true;
+    }
+    if (!editingTextBlockId) return false;
     const el = document.getElementById(editingTextBlockId);
     const txt = el?.querySelector('.block-text');
     if (!txt || !txt.contains(sel.anchorNode)) return false;
@@ -5487,22 +5551,31 @@
       const btn = artistPanel.querySelector(`.block-format-btn[data-format="${cmd}"]`);
       if (btn){ btn.classList.toggle('selected', on); btn.setAttribute('aria-pressed', String(on)); }
     });
+    const alignCmdMap = { left: 'Left', center: 'Center', right: 'Right', justify: 'Full' };
+    Object.keys(alignCmdMap).forEach(a => {
+      let on = false;
+      try{ on = document.queryCommandState('justify' + alignCmdMap[a]); } catch(e){}
+      const btn = artistPanel.querySelector(`.block-align-btn[data-align="${a}"]`);
+      if (btn) btn.classList.toggle('selected', on);
+    });
   }
   document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    const anchorEl = sel && sel.anchorNode ? (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement) : null;
+    const inFlow = anchorEl && anchorEl.closest ? anchorEl.closest('.page-flow') : null;
+    if (inFlow){ updateFormatButtonsFromSelection(); return; }
     if (!editingTextBlockId) return;
     const el = document.getElementById(editingTextBlockId);
     const txt = el?.querySelector('.block-text');
-    const sel = window.getSelection();
     if (txt && sel && sel.anchorNode && txt.contains(sel.anchorNode)) updateFormatButtonsFromSelection();
   });
 
   artistPanel.querySelectorAll('.block-format-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.format;
-      // priorité à la sélection de texte en cours d'édition (comportement
-      // attendu d'un traitement de texte) ; sinon, repli sur la bascule de
-      // tout le bloc (utile pour préparer le style avant de taper, ou pour
-      // un court texte entièrement en gras/italique).
+      // priorité à la sélection de texte (flux ou ancien bloc en cours
+      // d'édition — comportement attendu d'un traitement de texte) ; sinon,
+      // repli sur la bascule de tout le bloc hérité sélectionné.
       if (trySelectionFormat(key)) return;
       const newVal = !{ bold: blockBold, italic: blockItalic, underline: blockUnderline, highlight: blockHighlight }[key];
       if (key === 'bold') blockBold = newVal;
@@ -5524,21 +5597,60 @@
       styleUndoPending = false;
     });
   });
-  blockSizeUp.addEventListener('click', () => { blockSizeInput.value = Math.min(72, (parseInt(blockSizeInput.value, 10) || 14) + 1); applyTextStyleToSelected(); styleUndoPending = false; });
-  blockSizeDown.addEventListener('click', () => { blockSizeInput.value = Math.max(8, (parseInt(blockSizeInput.value, 10) || 14) - 1); applyTextStyleToSelected(); styleUndoPending = false; });
-  lineHeightUp.addEventListener('click', () => { blockLineHeight.value = (Math.min(3, (parseFloat(blockLineHeight.value) || 1.6) + 0.1)).toFixed(1); applyTextStyleToSelected(); });
-  lineHeightDown.addEventListener('click', () => { blockLineHeight.value = (Math.max(1, (parseFloat(blockLineHeight.value) || 1.6) - 0.1)).toFixed(1); applyTextStyleToSelected(); });
-  letterSpacingUp.addEventListener('click', () => { blockLetterSpacing.value = (Math.min(10, (parseFloat(blockLetterSpacing.value) || 0) + 0.5)); applyTextStyleToSelected(); });
-  letterSpacingDown.addEventListener('click', () => { blockLetterSpacing.value = (Math.max(-2, (parseFloat(blockLetterSpacing.value) || 0) - 0.5)); applyTextStyleToSelected(); });
-  blockFontFamily.addEventListener('change', applyTextStyleToSelected);
-  blockSizeInput.addEventListener('input', applyTextStyleToSelected);
-  blockLineHeight.addEventListener('input', applyTextStyleToSelected);
-  blockLetterSpacing.addEventListener('input', applyTextStyleToSelected);
-  blockColorInput.addEventListener('input', applyTextStyleToSelected);
+
+  // ---- applique taille / police / interlignage / interlettrage / couleur
+  // au texte du flux sélectionné (execCommand pour taille/police/couleur,
+  // par paragraphe pour interlignage/interlettrage — pas d'équivalent
+  // natif). Si aucune sélection n'est dans le flux, repli sur l'ancien
+  // système de bloc sélectionné (compatibilité). ----
+  function applyFlowFontSize(pt){
+    let ok = false;
+    try{ ok = document.execCommand('fontSize', false, '7'); } catch(e){}
+    if (!ok) return false;
+    document.querySelectorAll('.page-flow font[size="7"]').forEach(elx => {
+      const span = document.createElement('span');
+      span.style.fontSize = pt + 'pt';
+      while (elx.firstChild) span.appendChild(elx.firstChild);
+      elx.replaceWith(span);
+    });
+    return true;
+  }
+  function applyFlowParagraphStyle(prop, value){
+    const paras = getSelectedFlowParagraphs();
+    if (!paras.length) return false;
+    paras.forEach(p => { p.style[prop] = value; });
+    return true;
+  }
+  function applyTextStyleUniversal(){
+    const side = currentFlowSideFromSelection();
+    if (side){
+      if (!flowStyleUndoPending){ pushUndo(); flowStyleUndoPending = true; }
+      applyFlowFontSize(parseInt(blockSizeInput.value, 10) || 14);
+      try{ document.execCommand('fontName', false, blockFontFamily.value.replace(/'/g, '')); } catch(e){}
+      try{ document.execCommand('foreColor', false, blockColorInput.value); } catch(e){}
+      applyFlowParagraphStyle('lineHeight', blockLineHeight.value);
+      applyFlowParagraphStyle('letterSpacing', (parseFloat(blockLetterSpacing.value) || 0) + 'px');
+      pingArtistTyping();
+      scheduleFlowRepagination(side);
+      return;
+    }
+    applyTextStyleToSelected();
+  }
+  blockSizeUp.addEventListener('click', () => { blockSizeInput.value = Math.min(72, (parseInt(blockSizeInput.value, 10) || 14) + 1); applyTextStyleUniversal(); styleUndoPending = false; flowStyleUndoPending = false; });
+  blockSizeDown.addEventListener('click', () => { blockSizeInput.value = Math.max(8, (parseInt(blockSizeInput.value, 10) || 14) - 1); applyTextStyleUniversal(); styleUndoPending = false; flowStyleUndoPending = false; });
+  lineHeightUp.addEventListener('click', () => { blockLineHeight.value = (Math.min(3, (parseFloat(blockLineHeight.value) || 1.6) + 0.1)).toFixed(1); applyTextStyleUniversal(); });
+  lineHeightDown.addEventListener('click', () => { blockLineHeight.value = (Math.max(1, (parseFloat(blockLineHeight.value) || 1.6) - 0.1)).toFixed(1); applyTextStyleUniversal(); });
+  letterSpacingUp.addEventListener('click', () => { blockLetterSpacing.value = (Math.min(10, (parseFloat(blockLetterSpacing.value) || 0) + 0.5)); applyTextStyleUniversal(); });
+  letterSpacingDown.addEventListener('click', () => { blockLetterSpacing.value = (Math.max(-2, (parseFloat(blockLetterSpacing.value) || 0) - 0.5)); applyTextStyleUniversal(); });
+  blockFontFamily.addEventListener('change', applyTextStyleUniversal);
+  blockSizeInput.addEventListener('input', applyTextStyleUniversal);
+  blockLineHeight.addEventListener('input', applyTextStyleUniversal);
+  blockLetterSpacing.addEventListener('input', applyTextStyleUniversal);
+  blockColorInput.addEventListener('input', applyTextStyleUniversal);
   // au relâchement d'un contrôle, le prochain ajustement ouvrira une nouvelle
   // étape d'historique plutôt que de continuer à fusionner avec celui-ci
   [blockFontFamily, blockSizeInput, blockLineHeight, blockLetterSpacing, blockColorInput]
-    .forEach(inp => inp.addEventListener('change', () => { styleUndoPending = false; }));
+    .forEach(inp => inp.addEventListener('change', () => { styleUndoPending = false; flowStyleUndoPending = false; }));
 
   function currentTextStyle(){
     return {
@@ -7077,7 +7189,17 @@
       }
     }
 
-    // blocs (texte/image) et post-it de cette page, remis dans l'ordre
+    // texte du flux (nouvelle écriture principale) : ajouté d'abord, dans
+    // l'ordre déjà stocké (haut en bas), avant les blocs/post-it superposés
+    const flowParas = flowCache[s + '-' + side] || [];
+    if (flowParas.length){
+      hasContent = true;
+      const wrap = document.createElement('div');
+      wrap.innerHTML = flowParas.join('');
+      Array.from(wrap.children).forEach(p => article.appendChild(p));
+    }
+
+    // blocs (image) et post-it de cette page, remis dans l'ordre
     // naturel de lecture (haut en bas, puis gauche à droite en cas d'égalité)
     const items = [];
     blocksCache.filter(b => b.spread === s && b.side === side && (b.type === 'text' || b.type === 'image'))
@@ -7384,11 +7506,12 @@
     const postitsBytes = new Blob([JSON.stringify(postitsCache)]).size;
     const drawingsBytes = new Blob([JSON.stringify(drawingsCache)]).size;
     const commentsBytes = new Blob([JSON.stringify(commentsCache)]).size;
-    const ratio = Math.min(1, blocksBytes / STORAGE_KEY_LIMIT);
+    const flowBytes = new Blob([JSON.stringify(flowCache)]).size;
+    const ratio = Math.min(1, Math.max(blocksBytes, flowBytes) / STORAGE_KEY_LIMIT);
     fill.style.width = (ratio * 100) + '%';
     fill.classList.toggle('warn', ratio > 0.8);
-    label.textContent = `Poids du carnet : ${formatBytes(blocksBytes + postitsBytes + drawingsBytes + commentsBytes)}` +
-      (ratio > 0.8 ? ` — attention, les blocs (images) approchent la limite de ${formatBytes(STORAGE_KEY_LIMIT)}` : '');
+    label.textContent = `Poids du carnet : ${formatBytes(blocksBytes + postitsBytes + drawingsBytes + commentsBytes + flowBytes)}` +
+      (ratio > 0.8 ? ` — attention, le texte ou les images approchent la limite de ${formatBytes(STORAGE_KEY_LIMIT)}` : '');
   }
 
   // ============ Notification visiteur : réponse de l'artiste ============
