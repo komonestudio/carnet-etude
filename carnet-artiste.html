@@ -2521,7 +2521,11 @@
 
         <div style="height:1px; background:rgba(38,35,25,.1); margin:14px 0;"></div>
 
-        <div class="tool-hint" style="margin:0 0 10px;">La couverture arrière reprend automatiquement le titre et la couleur de la couverture avant. Vous pouvez lui donner sa propre image.</div>
+        <div class="tool-hint" style="margin:0 0 10px;">La couverture arrière reprend automatiquement la couleur de la couverture avant, mais peut avoir son propre titre et sa propre image.</div>
+        <div class="plus-field">
+          <label for="coverBackTitleInput">Titre (couverture arrière)</label>
+          <input type="text" id="coverBackTitleInput" placeholder="Laisser vide pour reprendre le titre avant" maxlength="80">
+        </div>
         <div class="plus-field">
           <label for="coverBackImageFile">Image de couverture (arrière)</label>
           <input type="file" id="coverBackImageFile" accept="image/*">
@@ -3153,7 +3157,7 @@
   let spread = 0;
   const backCoverEnabled = true;
   let coverFront = { title: "Carnet d'étude", image: '', color: '' };
-  let coverBack = { image: '' };
+  let coverBack = { image: '', title: '' };
   const DEFAULT_ENVELOPE_COLOR = '#e5d9bf';
   const DEFAULT_ENVELOPE_TEXT = 'Un mot glissé entre les pages…';
   // couleur, texte et image de l'enveloppe de la page de garde — mutée en
@@ -3380,10 +3384,10 @@
     const data = which === 'front' ? coverFront : coverBack;
     const surface = which === 'front' ? coverFrontSurface : coverBackSurface;
     const titleEl = which === 'front' ? coverFrontTitleEl : coverBackTitleEl;
-    // titre et couleur unifiés : la couverture arrière reprend toujours le
-    // titre et la couleur de l'avant (coverFront), plutôt que des réglages
-    // indépendants — seule l'image reste propre à chaque couverture.
-    titleEl.textContent = coverFront.title || '';
+    // couleur unifiée : la couverture arrière reprend toujours celle de
+    // l'avant (coverFront) ; le titre et l'image restent propres à chaque
+    // couverture — le titre arrière retombe sur celui de l'avant s'il est vide.
+    titleEl.textContent = which === 'front' ? (coverFront.title || '') : (coverBack.title || coverFront.title || '');
     surface.style.backgroundColor = coverFront.color || '';
     surface.style.backgroundImage = data.image ? `url("${data.image}")` : '';
   }
@@ -4391,12 +4395,13 @@
     coverFront.color = parsedFront ? (parsedFront.color || '') : '';
     if (typeof applyCoverColor === 'function') applyCoverColor();
 
-    // La couverture arrière n'a plus que sa propre image : le titre et la
-    // couleur suivent toujours ceux de la couverture avant (coverFront).
+    // La couverture arrière a son propre titre (repli sur celui de l'avant
+    // si vide) et sa propre image ; la couleur suit toujours celle de l'avant.
     const rawCoverBack = await storageGet('coverBack:' + currentNotebookId, true);
     let parsedBack = null;
     try{ parsedBack = rawCoverBack ? JSON.parse(rawCoverBack) : null; } catch(e){ parsedBack = null; }
     coverBack.image = parsedBack ? (parsedBack.image || '') : '';
+    coverBack.title = parsedBack ? (parsedBack.title || '') : '';
 
     // Même principe de mutation en place que coverFront/coverBack ci-dessus.
     const rawEnvelope = await storageGet('envelopeConfig:' + currentNotebookId, true);
@@ -7552,10 +7557,7 @@
 
   function setupCoverPageEditor(which){
     const data = which === 'front' ? coverFront : coverBack;
-    // Le champ de titre n'existe (en HTML) que pour la couverture avant :
-    // le titre de la couverture arrière suit désormais toujours celui de
-    // l'avant (voir renderCoverSurface), plus de réglage indépendant.
-    const titleInput = which === 'front' ? document.getElementById('coverFrontTitleInput') : null;
+    const titleInput = document.getElementById(`cover${which === 'front' ? 'Front' : 'Back'}TitleInput`);
     const colorInput = document.getElementById(`cover${which === 'front' ? 'Front' : 'Back'}ColorInput`);
     const colorReset = document.getElementById(`cover${which === 'front' ? 'Front' : 'Back'}ColorReset`);
     const imageFile = document.getElementById(`cover${which === 'front' ? 'Front' : 'Back'}ImageFile`);
@@ -7655,6 +7657,7 @@
   function refreshCoverEditorPanel(){
     coverFrontEditor.titleInput.value = coverFront.title || '';
     coverFrontEditor.colorInput.value = coverFront.color || DEFAULT_COVER;
+    coverBackEditor.titleInput.value = coverBack.title || '';
     if (coverFront.image && !coverFrontEditor.imageFile.files.length){
       coverFrontEditor.imagePreview.src = coverFront.image;
       coverFrontEditor.imagePreviewWrap.style.display = coverFront.image.startsWith('data:') ? 'block' : 'none';
