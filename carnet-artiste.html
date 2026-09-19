@@ -4425,8 +4425,91 @@
     persistFlowText();
   }
 
+  // ---- mesureur hors-écran : mêmes dimensions qu'une vraie page, pour
+  // tester si un paragraphe tiendrait sur une double-page pas affichée
+  // (indispensable pour enchaîner la pagination sans y naviguer) ----
+  const flowMeasurerWrap = document.createElement('div');
+  flowMeasurerWrap.style.cssText = 'position:fixed; left:-9999px; top:0; width:420px; height:595px; padding:44px 38px 36px; box-sizing:border-box; visibility:hidden;';
+  const flowMeasurer = document.createElement('div');
+  flowMeasurer.className = 'page-flow';
+  flowMeasurerWrap.appendChild(flowMeasurer);
+  document.body.appendChild(flowMeasurerWrap);
+  function measurerFits(html){
+    flowMeasurer.innerHTML = html;
+    return flowMeasurer.scrollHeight <= flowMeasurer.clientHeight + 1;
+  }
+  function htmlToParagraphs(html){
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html || '';
+    return Array.from(tmp.children);
+  }
+  function paragraphsToHtml(arr){
+    if (!arr.length) return '<p><br></p>';
+    const tmp = document.createElement('div');
+    arr.forEach(p => tmp.appendChild(p));
+    return tmp.innerHTML;
+  }
+  function isParaEmpty(p){ return !!p && p.textContent.trim() === '' && !p.querySelector('img'); }
+
+  function ensureSpreadExists(s){
+    if (s > totalSpreads){
+      totalSpreads = s;
+      storageSet('totalSpreads:' + currentNotebookId, String(totalSpreads), true);
+      updateNavButtons();
+    }
+  }
+
+  // pousse des paragraphes (nœuds détachés) en tête d'une page pas affichée ;
+  // si ça déborde encore, cascade récursivement (gauche -> droite -> double-
+  // page suivante), en créant les double-pages nécessaires à la volée
+  function cascadeParagraphsIntoSpread(s, side, incomingParas){
+    const key = s + '-' + side;
+    const existing = htmlToParagraphs(flowTextCache[key]);
+    const existingReal = (existing.length === 1 && isParaEmpty(existing[0])) ? [] : existing;
+    const merged = incomingParas.concat(existingReal);
+
+    const keep = [];
+    let guard = 0;
+    while (merged.length && guard < 300){
+      guard++;
+      if (keep.length && !measurerFits(paragraphsToHtml(keep.concat([merged[0]])))) break;
+      keep.push(merged.shift());
+    }
+    flowTextCache[key] = paragraphsToHtml(keep);
+
+    if (merged.length){
+      if (side === 'left') cascadeParagraphsIntoSpread(s, 'right', merged);
+      else { ensureSpreadExists(s + 1); cascadeParagraphsIntoSpread(s + 1, 'left', merged); }
+    }
+  }
+
+  // retrouve, pour chaque média ancré, la double-page/côté où vit désormais
+  // son paragraphe d'ancrage (la cascade a pu le faire changer de page) —
+  // à appeler après saveFlowForSpread(), une fois flowTextCache à jour
+  function reconcileFlowMediaAnchors(){
+    let changed = false;
+    flowMediaCache.forEach(m => {
+      if (m.fixed || !m.anchorId) return;
+      if (m.spread === spread){
+        const flow = flowElForSide(m.side);
+        if (flow && flow.querySelector(`[data-block-id="${m.anchorId}"]`)) return; // toujours à sa place
+      }
+      const marker = `data-block-id="${m.anchorId}"`;
+      for (const key in flowTextCache){
+        if (flowTextCache[key] && flowTextCache[key].indexOf(marker) !== -1){
+          const sepIndex = key.lastIndexOf('-');
+          const s = parseInt(key.slice(0, sepIndex), 10), side = key.slice(sepIndex + 1);
+          if (m.spread !== s || m.side !== side){ m.spread = s; m.side = side; changed = true; }
+          return;
+        }
+      }
+    });
+    if (changed) persistFlowMedia();
+  }
+
   // ---- débordement : bascule les derniers paragraphes de la page gauche
-  // vers la page droite tant que ça dépasse la hauteur utile ----
+  // vers la page droite (double-page affichée), puis de la page droite vers
+  // la double-page suivante (créée si besoin, en données seulement) ----
   function flowOverflowCascade(){
     let guard = 0;
     while (flowLeft.scrollHeight > flowLeft.clientHeight + 1 && guard < 100){
@@ -4435,10 +4518,23 @@
       if (kids.length <= 1) break; // un seul (très long) paragraphe : impossible à couper ici
       flowRight.insertBefore(kids[kids.length - 1], flowRight.firstChild);
     }
-    // au-delà de la page droite : pas encore de double-page suivante (étape à venir) — on laisse tel quel
+    if (flowRight.scrollHeight > flowRight.clientHeight + 1){
+      const overflowParas = [];
+      guard = 0;
+      while (flowRight.scrollHeight > flowRight.clientHeight + 1 && flowRight.children.length > 1 && guard < 100){
+        guard++;
+        overflowParas.unshift(flowRight.removeChild(flowRight.lastElementChild));
+      }
+      if (overflowParas.length){
+        ensureSpreadExists(spread + 1);
+        cascadeParagraphsIntoSpread(spread + 1, 'left', overflowParas);
+      }
+    }
   }
   // ---- place libre : fait remonter les premiers paragraphes de la page
-  // droite vers la gauche tant qu'ils tiennent ----
+  // droite vers la gauche tant qu'ils tiennent (au sein de la double-page
+  // affichée seulement — reprendre depuis la double-page suivante n'est pas
+  // encore géré) ----
   function flowUnderflowCascade(){
     let guard = 0;
     while (flowRight.firstChild && guard < 100){
@@ -4463,6 +4559,7 @@
         flowOverflowCascade();
         flowUnderflowCascade();
         saveFlowForSpread(spread);
+        reconcileFlowMediaAnchors();
         repositionAllFlowMedia();
       }, 150);
     });
@@ -4473,6 +4570,7 @@
       flowOverflowCascade();
       flowUnderflowCascade();
       saveFlowForSpread(spread);
+      reconcileFlowMediaAnchors();
       repositionAllFlowMedia();
     });
   });
@@ -5143,7 +5241,7 @@
     const m = location.hash.match(/[#&]artist=([^&]+)/);
     if (!m) return false;
     const secret = decodeURIComponent(m[1]);
-    history.replaceState(null, '', location.pathname + location.search);
+    try{ history.replaceState(null, '', location.pathname + location.search); } catch(e){ /* bac à sable restreint (aperçu) : on continue sans nettoyer l'URL */ }
     const result = await attemptArtistUnlock(secret, true);
     return !!result.ok;
   }
