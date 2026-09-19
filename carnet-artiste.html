@@ -2309,6 +2309,84 @@
 
     <!-- ---- TEXTE (intègre désormais Lien, déplacé depuis « + ») ---- -->
     <div class="panel-content" id="panelTexte" style="display:none;">
+      <label>Police</label>
+      <select id="flowFontFamily">
+        <option value="'Newsreader', serif" selected>Newsreader</option>
+        <option value="'Times New Roman', serif">Times New Roman</option>
+        <option value="'Montserrat', sans-serif">Montserrat</option>
+        <option value="'Courier New', monospace">Courier New</option>
+        <option value="'Caveat', cursive">Caveat (manuscrite)</option>
+        <option value="'OpenDyslexic', sans-serif">OpenDyslexic</option>
+      </select>
+
+      <label>Taille</label>
+      <div class="tool-size-row">
+        <button class="tool-btn" id="flowSizeDown" type="button" style="flex:0 0 28px;">–</button>
+        <input type="number" id="flowSizeInput" value="14" min="8" max="72">
+        <span style="font-size:11px; color:var(--ink-soft);">pt</span>
+        <button class="tool-btn" id="flowSizeUp" type="button" style="flex:0 0 28px;">+</button>
+      </div>
+
+      <label>Couleur</label>
+      <div class="tool-row" style="align-items:center;">
+        <input type="color" id="flowColorInput" value="#262319">
+      </div>
+
+      <label>Mise en forme</label>
+      <div class="tool-row">
+        <button class="tool-btn flow-format-btn" data-format="bold" type="button" aria-label="Gras" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 4h7a4 4 0 010 8H6zM6 12h8a4 4 0 010 8H6z"/></svg>
+        </button>
+        <button class="tool-btn flow-format-btn" data-format="italic" type="button" aria-label="Italique" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4h6M5 20h6M14 4L9 20"/></svg>
+        </button>
+        <button class="tool-btn flow-format-btn" data-format="underline" type="button" aria-label="Souligné" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 3v8a6 6 0 0012 0V3M4 21h16"/></svg>
+        </button>
+        <button class="tool-btn flow-format-btn" data-format="highlight" type="button" aria-label="Surligné" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21l3-3M9.5 15.5L18 7a2.1 2.1 0 000-3 2.1 2.1 0 00-3 0l-8.5 8.5M6 12l6 6"/></svg>
+        </button>
+      </div>
+
+      <label>Alignement</label>
+      <div class="tool-row">
+        <button class="tool-btn flow-align-btn selected" data-align="Left" type="button" aria-label="Aligner à gauche">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
+        </button>
+        <button class="tool-btn flow-align-btn" data-align="Center" type="button" aria-label="Centrer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M5 18h14"/></svg>
+        </button>
+        <button class="tool-btn flow-align-btn" data-align="Right" type="button" aria-label="Aligner à droite">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M10 12h10M6 18h14"/></svg>
+        </button>
+        <button class="tool-btn flow-align-btn" data-align="Full" type="button" aria-label="Justifier">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
+
+      <div class="tool-hint">Sélectionnez du texte sur la page, puis ajustez — sans sélection, rien n'est modifié.</div>
+
+      <button class="accordion-row" data-accordion="lien" type="button">
+        Lien
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="accordion-body" id="accordionLien">
+        <div class="plus-field">
+          <label for="linkLabelInput">Libellé</label>
+          <input type="text" id="linkLabelInput" placeholder="En savoir plus">
+        </div>
+        <div class="plus-field">
+          <label for="linkUrlInput">URL</label>
+          <input type="text" id="linkUrlInput" placeholder="https://…">
+        </div>
+        <button class="accordion-action" id="linkPlaceBtn" type="button" style="margin-top:8px;">Placer sur la page</button>
+      </div>
+    </div>
+
+    <!-- ---- ancien panneau de blocs de texte : conservé tel quel (données/édition
+         de blocs existants plus anciens restent fonctionnelles) mais plus jamais
+         affiché depuis le dock — remplacé ci-dessus par le panneau du texte au fil ---- -->
+    <div class="panel-content" id="panelTexteLegacy" style="display:none;">
       <button class="tool-btn" id="addTextBlockBtn" type="button" style="width:100%; margin-bottom:14px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Bloc de texte
       </button>
@@ -2398,21 +2476,6 @@
 
       <div class="tool-hint">Sélectionnez un bloc existant pour modifier son style en direct, ou créez-en un nouveau. Double-cliquez sur une poignée de redimensionnement pour ajuster automatiquement la hauteur du cadre à son contenu. Maintenez Maj en redimensionnant pour conserver ses proportions. Astuce : Ctrl+D duplique le bloc (texte, image, forme…) actuellement sélectionné sur la même page ; Ctrl+C puis Ctrl+V le copie vers n'importe quelle autre page.</div>
 
-      <button class="accordion-row" data-accordion="lien" type="button">
-        Lien
-        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
-      </button>
-      <div class="accordion-body" id="accordionLien">
-        <div class="plus-field">
-          <label for="linkLabelInput">Libellé</label>
-          <input type="text" id="linkLabelInput" placeholder="En savoir plus">
-        </div>
-        <div class="plus-field">
-          <label for="linkUrlInput">URL</label>
-          <input type="text" id="linkUrlInput" placeholder="https://…">
-        </div>
-        <button class="accordion-action" id="linkPlaceBtn" type="button" style="margin-top:8px;">Placer sur la page</button>
-      </div>
     </div>
 
     <!-- ---- DESSIN ---- -->
