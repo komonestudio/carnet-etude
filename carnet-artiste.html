@@ -2004,6 +2004,7 @@
     <!-- ---- CARNET (regroupe Autre carnet / Exporter, déplacés depuis « + ») ---- -->
     <div class="panel-content" id="panelCarnet">
       <button class="accordion-action" id="previewModeBtn" type="button" style="margin-bottom:12px;">👁 Aperçu — voir comme un visiteur</button>
+      <button class="accordion-action danger" id="artistLogoutBtn" type="button" style="margin-bottom:12px;">🚪 Se déconnecter du mode artiste</button>
 
       <div class="storage-usage" id="storageUsage">
         <div class="storage-usage__bar"><div class="storage-usage__fill" id="storageUsageFill"></div></div>
@@ -4331,6 +4332,19 @@
     }
   }
   document.getElementById('previewModeBtn').addEventListener('click', () => setPreviewMode(true));
+
+  // ---- déconnexion du mode artiste ----
+  // Termine proprement la session, quelle que soit la méthode utilisée pour
+  // entrer : ferme la session Firebase (sinon onAuthStateChanged nous
+  // reconnecterait tout seul au prochain chargement) et oublie l'ancien
+  // jeton d'appareil (système lien secret/mot de passe, si encore utilisé).
+  document.getElementById('artistLogoutBtn').addEventListener('click', async () => {
+    if (previewMode) setPreviewMode(false);
+    forgetDevice();
+    try{ if (firebaseAuthReady) await firebase.auth().signOut(); } catch(e){ /* pas grave : on repasse quand même en public ci-dessous */ }
+    setArtistMode(false);
+    showToast('Déconnecté du mode artiste.');
+  });
   document.getElementById('previewExitBtn').addEventListener('click', () => setPreviewMode(false));
 
   // ============ MODE ARTISTE : filet minimal — régénérer le lien secret ============
