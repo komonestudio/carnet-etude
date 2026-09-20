@@ -40,6 +40,7 @@
      Firebase quand window.storage n'est pas disponible. ---- -->
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <style>
   :root{
     --margin-1:#f2efe6;
@@ -93,115 +94,6 @@
     z-index:2;
   }
 
-  /* ---------- Sélecteur de carnet ----------
-     Masqué : cet en-tête faisait doublon avec le bouton « Carnet » du dock
-     artiste et celui de la barre publique, qui remplissent tous deux la
-     même fonction (changer de carnet, en créer un). L'élément reste dans
-     le DOM (les scripts existants qui mettent à jour notebookTitle etc.
-     restent donc valides) mais n'est plus affiché. */
-  .notebook-selector-wrap{
-    display:none;
-  }
-  .notebook-selector-wrap--unused{
-    position:fixed;
-    top:26px; left:30px;
-    z-index:50;
-    align-items:center;
-    gap:10px;
-  }
-
-  .notebook-selector{
-    display:flex;
-    align-items:center;
-    gap:9px;
-    padding:11px 16px;
-    background: rgba(255,255,255,.65);
-    border:1px solid rgba(38,35,25,.12);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius:12px;
-    color:var(--ink);
-    font-family:'Inter', sans-serif;
-    font-size:14px;
-    font-weight:600;
-    letter-spacing:.01em;
-    cursor:pointer;
-    box-shadow: 0 4px 14px rgba(20,17,10,.16);
-    transition: background .2s ease, transform .15s ease;
-  }
-  .notebook-selector:hover{ background: rgba(255,255,255,.75); }
-  .notebook-selector:focus-visible{
-    outline: 2px solid var(--esprit);
-    outline-offset: 3px;
-  }
-  .notebook-selector .book-glyph{ width:14px; height:14px; opacity:.75; flex-shrink:0; }
-  .notebook-selector .chevron{
-    width:10px; height:10px; margin-left:2px; opacity:.6;
-    transition: transform .3s ease;
-  }
-  .notebook-selector[aria-expanded="true"] .chevron{ transform: rotate(180deg); }
-
-  .new-notebook-btn{
-    width:38px; height:38px;
-    border-radius:50%;
-    background: rgba(255,255,255,.65);
-    border:1px solid rgba(38,35,25,.12);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    color:var(--ink);
-    font-size:18px; font-weight:500;
-    display:none; /* réservé au mode Artiste — étape 3 */
-    align-items:center; justify-content:center;
-    cursor:pointer;
-    box-shadow: 0 4px 14px rgba(20,17,10,.16);
-  }
-
-  .notebook-dropdown{
-    position:absolute;
-    top:calc(100% + 8px);
-    left:0;
-    min-width:250px;
-    background: rgba(255,255,255,.65);
-    border:1px solid rgba(38,35,25,.12);
-    backdrop-filter: blur(16px);
-    border-radius:14px;
-    padding:8px;
-    box-shadow: 0 20px 44px rgba(20,17,10,.22), 0 3px 10px rgba(20,17,10,.14);
-    opacity:0;
-    transform: translateY(-6px) scale(.98);
-    pointer-events:none;
-    transition: opacity .2s ease, transform .2s ease;
-  }
-  .notebook-dropdown.open{
-    opacity:1; transform: translateY(0) scale(1); pointer-events:auto;
-  }
-  .notebook-dropdown button{
-    display:flex; flex-direction:column; align-items:flex-start;
-    width:100%; background:none; border:none; text-align:left;
-    padding:9px 12px; border-radius:9px; cursor:pointer;
-    color:var(--ink); font-family:'Inter', sans-serif; font-size:13.5px; font-weight:500;
-    position:relative;
-  }
-  .notebook-dropdown button::before{
-    content:""; position:absolute; left:0; top:9px; bottom:9px; width:2px; border-radius:2px;
-    background: linear-gradient(var(--corps), var(--esprit)); opacity:0; transition: opacity .15s ease;
-  }
-  .notebook-dropdown button:hover, .notebook-dropdown button:focus-visible{
-    background: rgba(38,35,25,.06); outline:none;
-  }
-  .notebook-dropdown button:hover::before, .notebook-dropdown button:focus-visible::before{ opacity:1; }
-  .notebook-dropdown button span.sub{
-    font-family:'Inter', sans-serif; font-weight:400; font-size:11px; color: var(--ink-soft); margin-top:2px;
-  }
-  .notebook-dropdown .divider{ height:1px; background: rgba(38,35,25,.1); margin:6px 4px; }
-  .notebook-dropdown .new-notebook{
-    display:flex; align-items:center; gap:8px; color: var(--ink-soft);
-    font-family:'Inter', sans-serif; font-size:12px; padding:8px 12px;
-  }
-  .notebook-dropdown .new-notebook .plus{
-    width:16px;height:16px;border-radius:50%; border:1px solid rgba(38,35,25,.3);
-    display:flex; align-items:center; justify-content:center; font-size:11px;
-  }
 
   /* ---------- Couverture (déborde légèrement autour des pages) ---------- */
   .book-cover{
@@ -753,17 +645,10 @@
      de couverture (voir .book-cover.cover-transition), plus stable sur
      mobile — voir flip() dans le script. */
 
-  @media (prefers-reduced-motion: reduce){
-    .notebook-dropdown, .chevron{ transition:none !important; }
-  }
-
   /* La mise à l'échelle globale (.book-scale-wrap, voir fitBookToViewport())
      se charge d'adapter le carnet à toutes les tailles d'écran sans jamais
      déformer les pages : plus besoin ici de recalculer width/height/padding
      par media query, ce qui aurait changé les proportions internes. */
-  @media (max-width: 520px){
-    .notebook-selector-wrap{ top:12px; left:12px; }
-  }
 
   /* ============ MODE PUBLIC ============ */
 
@@ -1107,8 +992,6 @@
      (#2a2413, sombre) : illisible sur les teintes assombries ci-dessus, donc
      basculé en blanc en mode sombre plutôt que dupliqué sur chaque enfant. */
   body.dark-mode .postit{ color:#F4F5F5; }
-  body.dark-mode .postit .postit-footer{ color: rgba(244,245,245,.75); }
-  body.dark-mode .postit .postit-icon-btn{ color:#F4F5F5; }
   .postit{ transform: rotate(var(--postit-rot, 0deg)); }
   @keyframes postitPop{
     0%{ opacity:0; transform: rotate(var(--postit-rot,0deg)) scale(.85) translateY(10px); }
@@ -1126,23 +1009,6 @@
     outline: 1px dashed rgba(38,35,25,.4);
     border-radius:2px;
   }
-  .postit .postit-footer{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-top:8px;
-    font-family:'Inter', sans-serif; font-size:10.5px; font-weight:600;
-    color: rgba(42,36,19,.65);
-  }
-  .postit .postit-actions{ display:flex; align-items:center; gap:6px; }
-  .postit .postit-icon-btn{
-    width:20px; height:20px; border:none; background: rgba(255,255,255,.35);
-    border-radius:5px; cursor:pointer; display:flex; align-items:center; justify-content:center;
-    color: rgba(42,36,19,.75);
-  }
-  .postit .postit-icon-btn svg{ width:11px; height:11px; }
-  .postit .postit-like-btn{ width:auto; padding:0 5px; gap:3px; }
-  .postit .postit-like-btn.liked{ color:#c0392b; background: rgba(255,255,255,.55); }
-  .postit .postit-like-count{ font-size:10px; font-weight:700; }
-  .postit .postit-icon-btn:hover{ background: rgba(255,255,255,.6); }
 
   /* panneau de création */
   .postit-panel{
@@ -1354,6 +1220,7 @@
   /* ============ MODE ARTISTE ============ */
 
   body.artist-mode .writing-indicator{ display:none !important; }
+  body.artist-mode #artistLoginBtn{ display:none !important; }
   /* ---- mode aperçu (artiste) : masque tout le chrome d'édition pour
      visualiser le carnet exactement comme un visiteur, sans quitter la
      session artiste (pas de nouveau mot de passe à ressaisir) ---- */
@@ -1415,8 +1282,6 @@
   body.dark-mode .artist-dock,
   body.dark-mode .tools-dock,
   body.dark-mode .public-toolbar,
-  body.dark-mode .notebook-selector,
-  body.dark-mode .notebook-dropdown,
   body.dark-mode .public-carnet-dropdown,
   body.dark-mode .layer-toolbar,
   body.dark-mode .postit-panel,
@@ -1428,7 +1293,6 @@
     border-color: rgba(244,245,245,.18);
   }
   body.dark-mode .page-nav__arrow:hover{ background: #656D72; }
-  body.dark-mode .notebook-selector:hover{ background: #656D72; }
   body.dark-mode .layer-toolbar button:hover{ background: #F4F5F5; color: #42484C; }
   body.dark-mode .envelope-letter{ background: #D3D7D9; color: #000; }
   /* ---- champs et boutons de paramètre (panneaux d'outils) : fond clair
@@ -1942,9 +1806,6 @@
      dock d'outils en barre horizontale basse arrondie, panneau d'outils en
      feuille ancrée au-dessus du dock. */
   @media (max-width: 900px){
-    /* ---- en-tête : carnet à gauche, annuler/rétablir à droite ---- */
-    .notebook-selector{ padding:9px 13px; font-size:13px; }
-    .notebook-selector-wrap{ gap:7px; top:16px; left:16px; }
     .undo-redo-bar{
       top:60px; right:16px; left:auto; bottom:auto;
     }
@@ -2087,30 +1948,7 @@
 </head>
 <body>
 
-  <div class="notebook-selector-wrap">
-    <button class="notebook-selector" id="notebookBtn" aria-expanded="false" aria-haspopup="true">
-      <svg class="book-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-        <path d="M3 5.5C5 4.2 8 4 12 5v14c-4-1-7-.8-9 .5V5.5Z"/>
-        <path d="M21 5.5C19 4.2 16 4 12 5v14c4-1 7-.8 9 .5V5.5Z"/>
-      </svg>
-      <span id="notebookTitle">Carnet d'étude</span>
-      <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M6 9l6 6 6-6"/>
-      </svg>
-    </button>
-    <button class="new-notebook-btn" id="newNotebookBtn" aria-label="Nouveau carnet">+</button>
-
-    <div class="notebook-dropdown" id="notebookDropdown" role="menu">
-      <button role="menuitem" data-title="Carnet d'étude" data-id="carnet-1">
-        Carnet d'étude
-        <span class="sub">carnet actif</span>
-      </button>
-      <div class="divider"></div>
-      <div class="new-notebook">
-        <span class="plus">+</span> Nouveau carnet — mode artiste
-      </div>
-    </div>
-  </div>
+  <button class="new-notebook-btn" id="newNotebookBtn" aria-label="Nouveau carnet" style="display:none;">+</button>
 
   <div class="writing-indicator" id="writingIndicator" role="status" aria-live="polite">
     <span class="dot" aria-hidden="true"></span> En train d'écrire…
@@ -2599,14 +2437,31 @@
   <div class="new-notebook-modal" id="artistAuthModal" role="dialog" aria-modal="true" aria-labelledby="artistAuthTitle" aria-describedby="artistAuthSubtitle">
     <div class="new-notebook-modal__card">
       <h3 id="artistAuthTitle">Mode Artiste</h3>
-      <p id="artistAuthSubtitle">Entrez le mot de passe pour activer le mode édition.</p>
-      <label for="artistAuthPassword" class="sr-only">Mot de passe</label>
-      <input type="password" id="artistAuthPassword" placeholder="Mot de passe" autocomplete="current-password">
-      <label for="artistAuthPasswordConfirm" class="sr-only">Confirmer le mot de passe</label>
-      <input type="password" id="artistAuthPasswordConfirm" placeholder="Confirmer le mot de passe" style="display:none;">
-      <label class="auth-remember">
-        <input type="checkbox" id="artistAuthRemember" checked> Se souvenir de cet appareil (30 jours)
-      </label>
+
+      <div class="tool-row" style="margin-bottom:14px;">
+        <button class="tool-btn artist-auth-tab-btn selected" data-tab="password" type="button">Lien / mot de passe</button>
+        <button class="tool-btn artist-auth-tab-btn" data-tab="email" type="button">E-mail</button>
+      </div>
+
+      <div id="artistAuthTabPassword">
+        <p id="artistAuthSubtitle">Entrez le mot de passe pour activer le mode édition.</p>
+        <label for="artistAuthPassword" class="sr-only">Mot de passe</label>
+        <input type="password" id="artistAuthPassword" placeholder="Mot de passe" autocomplete="current-password">
+        <label for="artistAuthPasswordConfirm" class="sr-only">Confirmer le mot de passe</label>
+        <input type="password" id="artistAuthPasswordConfirm" placeholder="Confirmer le mot de passe" style="display:none;">
+        <label class="auth-remember">
+          <input type="checkbox" id="artistAuthRemember" checked> Se souvenir de cet appareil (30 jours)
+        </label>
+      </div>
+
+      <div id="artistAuthTabEmail" style="display:none;">
+        <p>Connectez-vous avec l'e-mail et le mot de passe artiste (compte Firebase).</p>
+        <label for="artistAuthEmail" class="sr-only">E-mail</label>
+        <input type="email" id="artistAuthEmail" placeholder="E-mail" autocomplete="username">
+        <label for="artistAuthEmailPassword" class="sr-only">Mot de passe</label>
+        <input type="password" id="artistAuthEmailPassword" placeholder="Mot de passe" autocomplete="current-password">
+      </div>
+
       <div class="auth-error" id="artistAuthError" role="alert" style="display:none;"></div>
       <div class="new-notebook-modal__actions">
         <button class="nnm-cancel" id="artistAuthCancel" type="button">Annuler</button>
@@ -2711,6 +2566,9 @@
        le carnet — voir setupPinchZoom() dans le script. Le dock ne porte
        donc plus que le mode sombre. -->
   <div class="tools-dock">
+    <button class="zoom-float-btn" id="artistLoginBtn" type="button" aria-label="Connexion artiste" data-tooltip="Connexion artiste">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12a5 5 0 100-10 5 5 0 000 10Z"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+    </button>
     <button class="zoom-float-btn" id="darkModeBtn" type="button" aria-label="Mode sombre" data-tooltip="Mode sombre" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
     </button>
@@ -2883,12 +2741,43 @@
     appId: "1:418227063786:web:1ac4ba84ab19d8fb71c093"
   };
   let firebaseDb = null;
+  let firebaseAuthReady = false;
   try{
     if (!(window.storage && window.storage.get) && window.firebase){
       firebase.initializeApp(FIREBASE_CONFIG);
       firebaseDb = firebase.database();
+      if (firebase.auth){
+        firebaseAuthReady = true;
+        // Connexion silencieuse : tout visiteur obtient une identité anonyme
+        // dès l'arrivée (nécessaire pour des règles Firebase du type
+        // "auth != null"), sans rien changer à l'expérience publique.
+        // Si l'artiste se connecte ensuite par e-mail (voir plus bas), cet
+        // écouteur détecte le changement et bascule automatiquement en mode
+        // artiste — y compris tout seul au chargement si Firebase se
+        // souvient déjà de la session (persistance native, pas de jeton à
+        // gérer à la main comme pour l'ancien système par mot de passe).
+        firebase.auth().onAuthStateChanged((user) => {
+          if (user && !user.isAnonymous){
+            claimOwnerIfUnclaimed(user.uid);
+            setArtistMode(true);
+          } else if (!user){
+            firebase.auth().signInAnonymously().catch(() => {});
+          }
+        });
+      }
     }
   } catch(e){ /* Firebase indisponible (hors-ligne, SDK non chargé…) : on retombera sur localStorage */ }
+
+  // Réclame la propriété du carnet pour ce compte au tout premier login
+  // e-mail réussi — ne fait rien si un autre compte l'a déjà réclamée
+  // (les règles Firebase, elles, verrouillent ce champ après coup).
+  async function claimOwnerIfUnclaimed(uid){
+    if (!firebaseDb) return;
+    try{
+      const snap = await firebaseDb.ref('meta/ownerUid').once('value');
+      if (!snap.exists()) await firebaseDb.ref('meta/ownerUid').set(uid);
+    } catch(e){ /* pas grave : la réclamation pourra se refaire à la prochaine connexion */ }
+  }
 
   const memoryFallback = {};
   async function storageGet(key, shared){
@@ -2978,9 +2867,6 @@
   };
   let currentNotebookId = 'carnet-1';
   let postitsCache = [];   // post-it du carnet actuellement chargé (partagé)
-  let myCreations = [];    // ids créés par ce visiteur/navigateur (local, non partagé)
-  let myLikes = [];        // ids des post-it aimés par ce visiteur/navigateur (local, non partagé)
-  let seenReplies = {};    // { postitId: nombre de réponses déjà vues } — local, non partagé, sert à notifier les nouvelles réponses de l'artiste
   let blocksCache = [];    // blocs texte/image posés par l'artiste (partagé)
   let drawingsCache = {};  // traits de dessin, groupés par "spread-side" (partagé)
 
@@ -3121,9 +3007,14 @@
   document.getElementById('redoBtn').addEventListener('click', redo);
 
 
-  const notebookBtn = document.getElementById('notebookBtn');
-  const dropdown = document.getElementById('notebookDropdown');
-  const notebookTitle = document.getElementById('notebookTitle');
+  // En-tête « changer de carnet » retiré (doublon du bouton Carnet du dock
+  // artiste et de celui de la barre publique) : ces éléments détachés
+  // (jamais insérés dans le DOM visible) gardent la logique existante
+  // valide — switchNotebook(), addNotebookToDropdown(), etc. — sans rien
+  // afficher ni peser sur le HTML/CSS chargé.
+  const notebookBtn = document.createElement('button');
+  const dropdown = document.createElement('div');
+  const notebookTitle = document.createElement('span');
 
   notebookBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -4308,15 +4199,6 @@
   async function persistPostits(){
     await storageSet('postits:' + currentNotebookId, JSON.stringify(postitsCache), true);
   }
-  async function persistMyCreations(){
-    await storageSet('mycreations:' + currentNotebookId, JSON.stringify(myCreations), false);
-  }
-  async function persistMyLikes(){
-    await storageSet('mylikes:' + currentNotebookId, JSON.stringify(myLikes), false);
-  }
-  async function persistSeenReplies(){
-    await storageSet('seenreplies:' + currentNotebookId, JSON.stringify(seenReplies), false);
-  }
   async function loadNotebookData(){
     const raw = await storageGet('postits:' + currentNotebookId, true);
     try{ postitsCache = raw ? JSON.parse(raw) : []; }
@@ -4324,22 +4206,6 @@
     if (!raw){
       postitsCache = seedDemoPostits();
       if (postitsCache.length) await persistPostits();
-    }
-    const rawMine = await storageGet('mycreations:' + currentNotebookId, false);
-    try{ myCreations = rawMine ? JSON.parse(rawMine) : []; }
-    catch(e){ myCreations = []; }
-    const rawLikes = await storageGet('mylikes:' + currentNotebookId, false);
-    try{ myLikes = rawLikes ? JSON.parse(rawLikes) : []; }
-    catch(e){ myLikes = []; }
-    const rawSeenReplies = await storageGet('seenreplies:' + currentNotebookId, false);
-    try{ seenReplies = rawSeenReplies ? JSON.parse(rawSeenReplies) : null; }
-    catch(e){ seenReplies = null; }
-    if (!seenReplies){
-      // première visite avec cette fonctionnalité : on prend les réponses déjà
-      // présentes comme référence, pour ne pas notifier de vieilles réponses
-      seenReplies = {};
-      postitsCache.filter(p => myCreations.includes(p.id)).forEach(p => { seenReplies[p.id] = (p.replies || []).length; });
-      await persistSeenReplies();
     }
 
     const rawBlocks = await storageGet('blocks:' + currentNotebookId, true);
@@ -4364,7 +4230,7 @@
 
     // Reprend la dernière double-page consultée par ce visiteur sur cet
     // appareil, pour ce carnet précis — mémorisation implicite, jamais
-    // partagée (comme myCreations), sans action explicite de sa part.
+    // partagée, sans action explicite de sa part.
     const rawLastVisited = await storageGet('lastVisitedSpread:' + currentNotebookId, false);
     const parsedLastVisited = rawLastVisited ? parseInt(rawLastVisited, 10) : NaN;
     if (!isNaN(parsedLastVisited) && parsedLastVisited >= 1 && parsedLastVisited <= totalSpreads){
@@ -4544,10 +4410,28 @@
   const artistAuthCancel = document.getElementById('artistAuthCancel');
   const artistAuthSubmit = document.getElementById('artistAuthSubmit');
   const artistAuthRemember = document.getElementById('artistAuthRemember');
+  const artistAuthTabPassword = document.getElementById('artistAuthTabPassword');
+  const artistAuthTabEmail = document.getElementById('artistAuthTabEmail');
+  const artistAuthEmail = document.getElementById('artistAuthEmail');
+  const artistAuthEmailPassword = document.getElementById('artistAuthEmailPassword');
+  const artistLoginBtn = document.getElementById('artistLoginBtn');
+  let artistAuthActiveTab = 'password';
   const ARTIST_AUTH_SALT = 'carnet-etude-salt-v1';
   const DEVICE_TOKEN_KEY = 'carnet:artistUnlock';
   const DEVICE_TOKEN_TTL = 30 * 24 * 3600 * 1000; // 30 jours
   let artistAuthCreating = false;
+
+  document.querySelectorAll('.artist-auth-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      artistAuthActiveTab = btn.dataset.tab;
+      document.querySelectorAll('.artist-auth-tab-btn').forEach(b => b.classList.toggle('selected', b === btn));
+      artistAuthTabPassword.style.display = artistAuthActiveTab === 'password' ? 'block' : 'none';
+      artistAuthTabEmail.style.display = artistAuthActiveTab === 'email' ? 'block' : 'none';
+      artistAuthSubmit.textContent = artistAuthActiveTab === 'email' ? 'Se connecter' : (artistAuthCreating ? 'Créer et activer' : 'Déverrouiller');
+      artistAuthError.style.display = 'none';
+    });
+  });
+  artistLoginBtn?.addEventListener('click', () => openArtistAuthModal());
 
   // ---- limitation des tentatives ----
   // Il n'existe pas de vrai serveur derrière ce carnet (fichier HTML unique,
@@ -4631,6 +4515,12 @@
     artistAuthError.style.display = 'none';
     artistAuthPassword.value = '';
     artistAuthPasswordConfirm.value = '';
+    artistAuthEmail.value = '';
+    artistAuthEmailPassword.value = '';
+    artistAuthActiveTab = 'password';
+    document.querySelectorAll('.artist-auth-tab-btn').forEach(b => b.classList.toggle('selected', b.dataset.tab === 'password'));
+    artistAuthTabPassword.style.display = 'block';
+    artistAuthTabEmail.style.display = 'none';
     const existingHash = await storageGet('artistPasswordHash', true);
     artistAuthCreating = !existingHash;
     artistAuthTitle.textContent = artistAuthCreating ? 'Créer un mot de passe artiste' : 'Mode Artiste';
@@ -4664,11 +4554,26 @@
   artistAuthModal.addEventListener('click', (e) => {
     if (e.target === artistAuthModal) closeArtistAuthModal();
   });
-  [artistAuthPassword, artistAuthPasswordConfirm].forEach(inp => {
+  [artistAuthPassword, artistAuthPasswordConfirm, artistAuthEmail, artistAuthEmailPassword].forEach(inp => {
     inp.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') artistAuthSubmit.click();
     });
   });
+  // Connexion par e-mail (Firebase Auth) : réservée à l'artiste — aucune
+  // inscription possible depuis cette interface, seul un compte créé à la
+  // main dans la console Firebase peut se connecter. Le passage effectif en
+  // mode artiste (setArtistMode) est géré par l'écouteur onAuthStateChanged
+  // plus haut, pas ici : cette fonction se contente de tenter la connexion.
+  async function attemptFirebaseEmailLogin(email, pwd){
+    if (!email || !pwd) return { ok:false, msg:'E-mail et mot de passe requis.' };
+    if (!firebaseAuthReady) return { ok:false, msg:"Connexion e-mail indisponible ici (Firebase non actif dans cet aperçu)." };
+    try{
+      await firebase.auth().signInWithEmailAndPassword(email, pwd);
+      return { ok:true };
+    } catch(e){
+      return { ok:false, msg:"E-mail ou mot de passe incorrect." };
+    }
+  }
   // Tentative de déverrouillage : utilisée à la fois par le bouton du
   // formulaire (mot de passe tapé) et par le lien secret (#artist=...), qui
   // simule exactement la même saisie, sans dupliquer la logique d'essais/
@@ -4709,6 +4614,12 @@
   }
 
   artistAuthSubmit.addEventListener('click', async () => {
+    if (artistAuthActiveTab === 'email'){
+      const result = await attemptFirebaseEmailLogin(artistAuthEmail.value.trim(), artistAuthEmailPassword.value);
+      if (result.ok) closeArtistAuthModal();
+      else showArtistAuthError(result.msg);
+      return;
+    }
     const pwd = artistAuthPassword.value;
     if (artistAuthCreating && pwd && pwd !== artistAuthPasswordConfirm.value){
       showArtistAuthError('La confirmation ne correspond pas.');
@@ -6667,8 +6578,8 @@
     bookZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
     applyBookTransform();
   }
-  // ---- mode sombre : préférence locale au navigateur (non partagée, comme
-  // myLikes/myCreations), rétablie au chargement ----
+  // ---- mode sombre : préférence locale au navigateur (non partagée),
+  // rétablie au chargement ----
   const darkModeBtn = document.getElementById('darkModeBtn');
   function applyDarkMode(on){
     document.body.classList.toggle('dark-mode', on);
@@ -7065,53 +6976,6 @@
     label.textContent = `Poids du carnet : ${formatBytes(blocksBytes + postitsBytes + drawingsBytes + commentsBytes)}` +
       (ratio > 0.8 ? ` — attention, les blocs (images) approchent la limite de ${formatBytes(STORAGE_KEY_LIMIT)}` : '');
   }
-
-  // ============ Notification visiteur : réponse de l'artiste ============
-  // Signal discret côté visiteur : si l'un de ses propres post-it
-  // (myCreations) a reçu une nouvelle réponse étiquetée « Artiste » depuis
-  // le dernier sondage, un signal sonore bref est joué et un toast s'affiche.
-  function playNotificationChime(){
-    try{
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      const ctx = new Ctx();
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = 'sine';
-      o.frequency.value = 880;
-      g.gain.value = 0.0001;
-      o.connect(g); g.connect(ctx.destination);
-      const now = ctx.currentTime;
-      g.gain.exponentialRampToValueAtTime(0.07, now + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
-      o.start(now); o.stop(now + 0.4);
-      o.onended = () => ctx.close();
-    } catch(e){ /* audio indisponible : le toast visuel suffit */ }
-  }
-  async function pollArtistReplies(){
-    if (artistMode || !myCreations.length) return;
-    try{
-      const raw = await storageGet('postits:' + currentNotebookId, true);
-      const fresh = raw ? JSON.parse(raw) : [];
-      let changed = false;
-      fresh.forEach(p => {
-        if (!myCreations.includes(p.id)) return;
-        const seen = seenReplies[p.id] || 0;
-        const replies = p.replies || [];
-        if (replies.length > seen){
-          const newOnes = replies.slice(seen).filter(r => r.author === 'Artiste');
-          if (newOnes.length){
-            playNotificationChime();
-            showToast(newOnes.length === 1 ? "L'artiste a répondu à votre post-it." : `L'artiste a répondu à ${newOnes.length} de vos post-it.`);
-          }
-          seenReplies[p.id] = replies.length;
-          changed = true;
-        }
-      });
-      if (changed) await persistSeenReplies();
-    } catch(e){ /* stockage indisponible pour ce cycle : on réessaiera au suivant */ }
-  }
-  setInterval(pollArtistReplies, 6000);
 
   // ============ Export de la double-page (PDF) ============
   // html2canvas capture le DOM du carnet en image ; jsPDF l'encapsule dans
@@ -8024,7 +7888,7 @@
     const IDLE_MS = 3500;
     let idleTimer = null;
     function anyPanelOpen(){
-      return !!document.querySelector('.artist-panel.open, .postit-panel.open, .new-notebook-modal.open, .public-carnet-dropdown.open, .crop-toolbar.open, .notebook-dropdown.open');
+      return !!document.querySelector('.artist-panel.open, .postit-panel.open, .new-notebook-modal.open, .public-carnet-dropdown.open, .crop-toolbar.open');
     }
     function scheduleHide(){
       clearTimeout(idleTimer);
