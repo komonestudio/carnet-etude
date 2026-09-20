@@ -2779,6 +2779,19 @@
     } catch(e){ /* pas grave : la réclamation pourra se refaire à la prochaine connexion */ }
   }
 
+  // Une fois qu'un compte a réclamé le carnet (meta/ownerUid défini), l'ancien
+  // système lien secret/mot de passe ne peut plus réellement rien enregistrer
+  // (les règles Firebase n'acceptent les écritures que de ce compte-là) : on
+  // le désactive donc côté interface pour ne jamais laisser croire à une
+  // édition qui échouerait silencieusement.
+  async function isOwnerClaimed(){
+    if (!firebaseDb) return false;
+    try{
+      const snap = await firebaseDb.ref('meta/ownerUid').once('value');
+      return snap.exists();
+    } catch(e){ return false; }
+  }
+
   const memoryFallback = {};
   async function storageGet(key, shared){
     try{
@@ -4338,6 +4351,10 @@
   const secretLinkOutput = document.getElementById('secretLinkOutput');
   const copySecretLinkBtn = document.getElementById('copySecretLinkBtn');
   generateSecretLinkBtn?.addEventListener('click', async () => {
+    if (await isOwnerClaimed()){
+      showToast("Ce carnet utilise désormais la connexion par e-mail — plus besoin de lien secret.", true);
+      return;
+    }
     const secret = generateRandomSecret();
     const hash = await sha256Hex(secret);
     await storageSet('artistPasswordHash', hash, true);
@@ -4504,6 +4521,13 @@
     if (token && token.hash && Date.now() <= token.expires){
       document.body.classList.add('artist-device-recognized');
     }
+    if (await isOwnerClaimed()){
+      // Le carnet est passé à la connexion e-mail : un ancien jeton mémorisé
+      // ne doit plus jamais rouvrir le mode artiste tout seul — Firebase
+      // Auth (onAuthStateChanged, voir plus haut) gère seul la reconnexion.
+      forgetDevice();
+      return;
+    }
     if (await tryMagicLinkUnlock()) return;
     if (!token || !token.hash || Date.now() > token.expires){ forgetDevice(); return; }
     const stored = await storageGet('artistPasswordHash', true);
@@ -4517,10 +4541,25 @@
     artistAuthPasswordConfirm.value = '';
     artistAuthEmail.value = '';
     artistAuthEmailPassword.value = '';
-    artistAuthActiveTab = 'password';
-    document.querySelectorAll('.artist-auth-tab-btn').forEach(b => b.classList.toggle('selected', b.dataset.tab === 'password'));
-    artistAuthTabPassword.style.display = 'block';
-    artistAuthTabEmail.style.display = 'none';
+    const claimed = await isOwnerClaimed();
+    artistAuthActiveTab = claimed ? 'email' : 'password';
+    document.querySelectorAll('.artist-auth-tab-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.tab === artistAuthActiveTab);
+      b.style.display = (claimed && b.dataset.tab === 'password') ? 'none' : '';
+    });
+    artistAuthTabPassword.style.display = (!claimed && artistAuthActiveTab === 'password') ? 'block' : 'none';
+    artistAuthTabEmail.style.display = artistAuthActiveTab === 'email' ? 'block' : 'none';
+
+    if (claimed){
+      artistAuthTitle.textContent = 'Mode Artiste';
+      artistAuthSubtitle.textContent = '';
+      artistAuthSubmit.textContent = 'Se connecter';
+      artistAuthModal.classList.add('open');
+      artistAuthReturnFocus = document.activeElement;
+      setTimeout(() => artistAuthEmail.focus(), 30);
+      return;
+    }
+
     const existingHash = await storageGet('artistPasswordHash', true);
     artistAuthCreating = !existingHash;
     artistAuthTitle.textContent = artistAuthCreating ? 'Créer un mot de passe artiste' : 'Mode Artiste';
@@ -4579,6 +4618,9 @@
   // simule exactement la même saisie, sans dupliquer la logique d'essais/
   // verrouillage/mémorisation d'appareil.
   async function attemptArtistUnlock(pwd, remember){
+    if (await isOwnerClaimed()){
+      return { ok:false, msg:"Ce carnet utilise désormais la connexion par e-mail — le lien/mot de passe est désactivé." };
+    }
     if (!pwd) return { ok:false, msg:'Mot de passe requis.' };
     const existingHash = await storageGet('artistPasswordHash', true);
     if (!existingHash){
