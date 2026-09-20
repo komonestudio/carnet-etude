@@ -2031,12 +2031,12 @@
         <div class="tool-hint" id="exportHint" aria-live="polite">Capture la double-page actuellement affichée, telle qu'elle apparaît au public.</div>
       </div>
 
-      <button class="accordion-row" data-accordion="acces" type="button">
+      <button class="accordion-row" id="accordionAccesRow" data-accordion="acces" type="button">
         Lien d'accès
         <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       <div class="accordion-body" id="accordionAcces">
-        <div class="tool-hint" style="margin:0 0 10px;">Votre lien secret est l'unique moyen d'entrer en mode artiste. Générez-en un nouveau à tout moment et conservez-le en lieu sûr (gestionnaire de mots de passe) — en cas de perte, il n'existe aucun autre moyen de revenir ici.</div>
+        <div class="tool-hint" style="margin:0 0 10px;">Ce lien secret est un second moyen d'entrer en mode artiste, en plus de la connexion par e-mail. Générez-en un nouveau à tout moment et conservez-le en lieu sûr (gestionnaire de mots de passe).</div>
         <button class="accordion-action" id="generateSecretLinkBtn" type="button">Générer un nouveau lien secret</button>
         <div id="secretLinkResult" style="display:none; margin-top:10px;">
           <input type="text" id="secretLinkOutput" readonly aria-label="Nouveau lien secret" style="width:100%; border:1px solid rgba(38,35,25,.15); border-radius:8px; padding:8px 9px; font-family:'Inter', sans-serif; font-size:11px; background:#fff; color:var(--ink);">
@@ -4825,6 +4825,13 @@
     if (tool === 'carnet'){
       refreshPlusNotebookList();
       refreshStorageUsage();
+      const accesRow = document.getElementById('accordionAccesRow');
+      if (accesRow){
+        isOwnerClaimed().then(claimed => {
+          accesRow.style.display = claimed ? 'none' : '';
+          if (claimed) document.getElementById('accordionAcces')?.classList.remove('open');
+        });
+      }
     }
     if (tool === 'enveloppe' && typeof refreshEnvelopePanel === 'function'){
       refreshEnvelopePanel();
