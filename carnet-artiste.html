@@ -756,7 +756,7 @@
      Remplace deux boutons flottants indépendants, sujets à des conflits de
      positionnement (chevauchement) selon écran/mode. En MODE JOUR : pilule
      blanche translucide façon verre (même recette que .page-nav__arrow /
-     .notebook-selector), icônes en couleur d'encre (--ink). En mode sombre,
+     .artist-dock), icônes en couleur d'encre (--ink). En mode sombre,
      repasse à la pilule sombre d'origine — voir l'override plus bas, groupé
      avec les autres composants « verre » (body.dark-mode ...). ---- */
   .tools-dock{
@@ -1372,7 +1372,7 @@
 
   /* ---- dock d'outils de l'artiste (barre verticale façon app mobile) ----
      MODE JOUR : pilule blanche translucide façon verre (même recette que
-     .page-nav__arrow / .notebook-selector), icônes en couleur d'encre
+     .page-nav__arrow / .tools-dock), icônes en couleur d'encre
      (--ink), donc noires. En mode sombre, repasse à la pilule sombre
      d'origine — voir l'override groupé avec les autres composants
      « verre » (body.dark-mode ...) plus bas. */
@@ -1752,8 +1752,6 @@
   }
   .carnet-toast.visible{ opacity:1; transform: translateX(-50%) translateY(0); }
   .carnet-toast.error{ background: var(--corps); }
-
-  .accordion-action.danger{ color: var(--corps); border-color: rgba(179,80,46,.35); }
 
   .auth-remember{
     display:flex; align-items:center; gap:8px; cursor:pointer;
@@ -5923,37 +5921,51 @@
     const mask = el.querySelector('.block-image-mask');
     if (mask) mask.style.borderRadius = radius + 'px';
   }
-  // Regroupe les ajustements consécutifs (curseur d'épaisseur glissé, ou
-  // couleur ajustée en direct) en une seule étape d'annulation, comme pour
-  // le style de texte — voir styleUndoPending / applyTextStyleToSelected.
-  let imgBorderUndoPending = false;
-  function applyImageBorderToSelected(){
-    if (!selectedBlockId) return;
-    const b = blocksCache.find(x => x.id === selectedBlockId);
-    if (!b || b.type !== 'image') return;
-    if (!imgBorderUndoPending){ pushUndo(); imgBorderUndoPending = true; }
-    b.borderColor = imgBorderColorInput.value;
-    b.borderWidth = parseInt(imgBorderWidthInput.value, 10) || 0;
-    b.borderStyle = imgBorderStyleSelect.value;
-    b.radius = parseInt(imgBorderRadiusInput.value, 10) || 0;
-    imgBorderWidthLabel.textContent = b.borderWidth + ' px';
-    imgBorderRadiusLabel.textContent = b.radius + ' px';
-    const el = document.getElementById(b.id);
-    if (el) applyImageBorder(b, el);
-    persistBlocks();
+  // ---- câblage générique bordure (couleur/épaisseur/style/arrondi) ----
+  // Factorise une logique identique entre Image et Forme : mêmes 4
+  // contrôles, même regroupement d'ajustements consécutifs en une seule
+  // étape d'annulation (comme styleUndoPending / applyTextStyleToSelected),
+  // seul le rendu final diffère (applyImageBorder() pour une image,
+  // reconstruction du SVG pour une forme, voir les deux appels ci-dessous).
+  // getPending/setPending lisent/écrivent la variable `let …UndoPending`
+  // externe, déjà utilisée telle quelle par selectBlock()/deselectBlock().
+  function wireBorderControls({ blockType, colorInput, widthInput, widthLabel, styleSelect, radiusInput, radiusLabel, render, getPending, setPending }){
+    function applyToSelected(){
+      if (!selectedBlockId) return;
+      const b = blocksCache.find(x => x.id === selectedBlockId);
+      if (!b || b.type !== blockType) return;
+      if (!getPending()){ pushUndo(); setPending(true); }
+      b.borderColor = colorInput.value;
+      b.borderWidth = parseInt(widthInput.value, 10) || 0;
+      b.borderStyle = styleSelect.value;
+      b.radius = parseInt(radiusInput.value, 10) || 0;
+      widthLabel.textContent = b.borderWidth + ' px';
+      radiusLabel.textContent = b.radius + ' px';
+      render(b);
+      persistBlocks();
+    }
+    colorInput.addEventListener('input', applyToSelected);
+    widthInput.addEventListener('input', () => {
+      widthLabel.textContent = (parseInt(widthInput.value, 10) || 0) + ' px';
+      applyToSelected();
+    });
+    styleSelect.addEventListener('change', applyToSelected);
+    radiusInput.addEventListener('input', () => {
+      radiusLabel.textContent = (parseInt(radiusInput.value, 10) || 0) + ' px';
+      applyToSelected();
+    });
+    [colorInput, widthInput, styleSelect, radiusInput].forEach(inp => {
+      inp.addEventListener('change', () => setPending(false));
+    });
   }
-  imgBorderColorInput.addEventListener('input', applyImageBorderToSelected);
-  imgBorderWidthInput.addEventListener('input', () => {
-    imgBorderWidthLabel.textContent = (parseInt(imgBorderWidthInput.value, 10) || 0) + ' px';
-    applyImageBorderToSelected();
-  });
-  imgBorderStyleSelect.addEventListener('change', applyImageBorderToSelected);
-  imgBorderRadiusInput.addEventListener('input', () => {
-    imgBorderRadiusLabel.textContent = (parseInt(imgBorderRadiusInput.value, 10) || 0) + ' px';
-    applyImageBorderToSelected();
-  });
-  [imgBorderColorInput, imgBorderWidthInput, imgBorderStyleSelect, imgBorderRadiusInput].forEach(inp => {
-    inp.addEventListener('change', () => { imgBorderUndoPending = false; });
+
+  let imgBorderUndoPending = false;
+  wireBorderControls({
+    blockType: 'image',
+    colorInput: imgBorderColorInput, widthInput: imgBorderWidthInput, widthLabel: imgBorderWidthLabel,
+    styleSelect: imgBorderStyleSelect, radiusInput: imgBorderRadiusInput, radiusLabel: imgBorderRadiusLabel,
+    render: (b) => { const el = document.getElementById(b.id); if (el) applyImageBorder(b, el); },
+    getPending: () => imgBorderUndoPending, setPending: (v) => { imgBorderUndoPending = v; }
   });
 
   // Résout le conteneur (page ou couverture) correspondant à un « side » de
@@ -6620,36 +6632,17 @@
     persistBlocks();
   });
 
-  // Regroupe les ajustements consécutifs (curseur glissé, couleur en direct)
-  // en une seule étape d'annulation — même principe que imgBorderUndoPending.
+  // Même câblage générique que la bordure image, voir wireBorderControls().
   let shapeBorderUndoPending = false;
-  function applyShapeBorderToSelected(){
-    if (!selectedBlockId) return;
-    const b = blocksCache.find(x => x.id === selectedBlockId);
-    if (!b || b.type !== 'shape') return;
-    if (!shapeBorderUndoPending){ pushUndo(); shapeBorderUndoPending = true; }
-    b.borderColor = shapeBorderColorInput.value;
-    b.borderWidth = parseInt(shapeBorderWidthInput.value, 10) || 0;
-    b.borderStyle = shapeBorderStyleSelect.value;
-    b.radius = parseInt(shapeBorderRadiusInput.value, 10) || 0;
-    shapeBorderWidthLabel.textContent = b.borderWidth + ' px';
-    shapeBorderRadiusLabel.textContent = b.radius + ' px';
-    const wrap = document.getElementById(b.id)?.querySelector('.block-shape');
-    if (wrap) wrap.innerHTML = shapeSVG(b.shapeType, b.color, { color: b.borderColor, width: b.borderWidth, style: b.borderStyle, radius: b.radius });
-    persistBlocks();
-  }
-  shapeBorderColorInput.addEventListener('input', applyShapeBorderToSelected);
-  shapeBorderWidthInput.addEventListener('input', () => {
-    shapeBorderWidthLabel.textContent = (parseInt(shapeBorderWidthInput.value, 10) || 0) + ' px';
-    applyShapeBorderToSelected();
-  });
-  shapeBorderStyleSelect.addEventListener('change', applyShapeBorderToSelected);
-  shapeBorderRadiusInput.addEventListener('input', () => {
-    shapeBorderRadiusLabel.textContent = (parseInt(shapeBorderRadiusInput.value, 10) || 0) + ' px';
-    applyShapeBorderToSelected();
-  });
-  [shapeBorderColorInput, shapeBorderWidthInput, shapeBorderStyleSelect, shapeBorderRadiusInput].forEach(inp => {
-    inp.addEventListener('change', () => { shapeBorderUndoPending = false; });
+  wireBorderControls({
+    blockType: 'shape',
+    colorInput: shapeBorderColorInput, widthInput: shapeBorderWidthInput, widthLabel: shapeBorderWidthLabel,
+    styleSelect: shapeBorderStyleSelect, radiusInput: shapeBorderRadiusInput, radiusLabel: shapeBorderRadiusLabel,
+    render: (b) => {
+      const wrap = document.getElementById(b.id)?.querySelector('.block-shape');
+      if (wrap) wrap.innerHTML = shapeSVG(b.shapeType, b.color, { color: b.borderColor, width: b.borderWidth, style: b.borderStyle, radius: b.radius });
+    },
+    getPending: () => shapeBorderUndoPending, setPending: (v) => { shapeBorderUndoPending = v; }
   });
 
   // ============ ZOOM : clavier + pincement tactile (pinch-to-zoom) ============
