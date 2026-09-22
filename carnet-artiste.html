@@ -1231,6 +1231,14 @@
   body.preview-mode .new-notebook-btn,
   body.preview-mode .tools-dock{ display:none !important; }
   body.artist-mode.preview-mode .public-toolbar{ display:flex; }
+  /* ---- mode artiste : aperçu de la vue lecture accessible (DYS, voix,
+     mise à plat), sans quitter la session — mêmes contrôles que côté
+     public (barre publique), chrome d'édition masqué le temps de l'aperçu ---- */
+  body.artist-mode.inclusive-mode .artist-dock,
+  body.artist-mode.inclusive-mode .artist-panel,
+  body.artist-mode.inclusive-mode .undo-redo-bar,
+  body.artist-mode.inclusive-mode .layer-toolbar{ display:none !important; }
+  body.artist-mode.inclusive-mode .public-toolbar{ display:flex; }
   body.preview-mode .content-block{ pointer-events:none !important; }
   body.preview-mode .content-block:hover,
   body.preview-mode .content-block.selected,
@@ -2005,6 +2013,7 @@
     <!-- ---- CARNET (regroupe Autre carnet / Exporter, déplacés depuis « + ») ---- -->
     <div class="panel-content" id="panelCarnet">
       <button class="accordion-action" id="previewModeBtn" type="button" style="margin-bottom:12px;">👁 Aperçu — voir comme un visiteur</button>
+      <button class="accordion-action" id="inclusivePreviewBtn" type="button" style="margin-bottom:12px;">📖 Vue lecture accessible — DYS, voix, mise à plat</button>
       <button class="accordion-action danger" id="artistLogoutBtn" type="button" style="margin-bottom:12px;">🚪 Se déconnecter du mode artiste</button>
 
       <div class="storage-usage" id="storageUsage">
@@ -4335,6 +4344,23 @@
     }
   }
   document.getElementById('previewModeBtn').addEventListener('click', () => setPreviewMode(true));
+
+  // ---- mode artiste : aperçu de la vue lecture accessible (sans quitter la
+  // session artiste — voir setInclusiveMode et les règles CSS
+  // body.artist-mode.inclusive-mode) — même nettoyage d'état en cours que
+  // setPreviewMode(true), pour ne jamais laisser un outil armé ou un bloc
+  // en édition derrière la vue lecture. La fermeture (bouton ✕ de
+  // .inclusive-page, ou le bouton "Lecture seule" de la barre publique
+  // maintenant visible) rappelle simplement setInclusiveMode(false), qui
+  // réaffiche le dock artiste via les mêmes règles CSS.
+  document.getElementById('inclusivePreviewBtn').addEventListener('click', () => {
+    closeArtistPanel();
+    deselectBlock();
+    if (typeof exitTextEditMode === 'function') exitTextEditMode();
+    if (typeof closeCropMode === 'function') closeCropMode();
+    setDrawTool(null);
+    setInclusiveMode(true);
+  });
 
   // ---- déconnexion du mode artiste ----
   // Termine proprement la session, quelle que soit la méthode utilisée pour
