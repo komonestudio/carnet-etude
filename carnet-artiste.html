@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Carnet d'étude — Corps / Esprit</title>
-<meta name="description" content="Carnet d'étude en ligne interactif explorant la dualité corps/esprit : pages illustrées, notes d'artiste et carnets multiples.">
+<title>Carnets d'étude - Morgane Kerbiriou</title>
+<meta name="description" content="Carnets d'étude - Morgane Kerbiriou : carnet en ligne interactif explorant la dualité corps/esprit, pages illustrées, notes d'artiste et carnets multiples.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600;700&family=Caveat:wght@400;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
 <!-- OpenDyslexic : police d'accessibilité pour l'outil Texte, non disponible via Google Fonts -->
@@ -35,7 +35,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Carnet d'étude">
+<meta name="apple-mobile-web-app-title" content="Carnets d'étude - Morgane Kerbiriou">
 <!-- ---- Firebase Realtime Database : stockage réellement partagé entre
      visiteurs une fois le carnet hébergé hors de l'aperçu Claude.ai (qui
      fournit sa propre API window.storage, absente sur un site autonome).
@@ -2146,6 +2146,7 @@
         <button class="tool-btn block-format-btn" data-format="highlight" type="button" aria-label="Surligné" aria-pressed="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21l3-3M9.5 15.5L18 7a2.1 2.1 0 000-3 2.1 2.1 0 00-3 0l-8.5 8.5M6 12l6 6"/></svg>
         </button>
+        <input type="color" id="highlightColorInput" value="#f7e58b" title="Couleur du surligneur" aria-label="Couleur du surligneur">
       </div>
 
       <label>Alignement</label>
@@ -2347,7 +2348,7 @@
 
         <div class="plus-field">
           <label for="coverFrontTitleInput">Titre (couverture avant)</label>
-          <input type="text" id="coverFrontTitleInput" placeholder="Carnet d'étude" maxlength="80">
+          <input type="text" id="coverFrontTitleInput" placeholder="Carnets d'étude - Morgane Kerbiriou" maxlength="80">
         </div>
         <div class="plus-field">
           <label for="coverFrontColorInput">Couleur du carnet</label>
@@ -2505,7 +2506,7 @@
             <div class="cover-surface__texture" aria-hidden="true"></div>
             <div class="cover-surface__spine cover-surface__spine--right" aria-hidden="true"></div>
             <div class="cover-surface__content">
-              <div class="cover-surface__title" id="coverFrontTitleEl">Carnet d'étude</div>
+              <div class="cover-surface__title" id="coverFrontTitleEl">Carnets d'étude - Morgane Kerbiriou</div>
             </div>
             <div class="page-entries" id="entriesCoverFront"></div>
           </div>
@@ -2890,7 +2891,7 @@
   }
 
   const NOTEBOOK_IDS = {
-    "Carnet d'étude": 'carnet-1'
+    "Carnets d'étude - Morgane Kerbiriou": 'carnet-1'
   };
   let currentNotebookId = 'carnet-1';
   let postitsCache = [];   // post-it du carnet actuellement chargé (partagé)
@@ -3074,7 +3075,7 @@
   let totalSpreads = 1; // nombre de doubles-pages INTÉRIEURES créées pour le carnet courant (dynamique, persisté)
   let spread = 0;
   const backCoverEnabled = true;
-  let coverFront = { title: "Carnet d'étude", image: '', color: '' };
+  let coverFront = { title: "Carnets d'étude - Morgane Kerbiriou", image: '', color: '' };
   let coverBack = { image: '', title: '' };
   const DEFAULT_ENVELOPE_COLOR = '#e5d9bf';
   const DEFAULT_ENVELOPE_TEXT = 'Un mot glissé entre les pages…';
@@ -4283,7 +4284,7 @@
     const rawCoverFront = await storageGet('coverFront:' + currentNotebookId, true);
     let parsedFront = null;
     try{ parsedFront = rawCoverFront ? JSON.parse(rawCoverFront) : null; } catch(e){ parsedFront = null; }
-    coverFront.title = parsedFront ? (parsedFront.title || '') : (notebookTitle.textContent || "Carnet d'étude");
+    coverFront.title = parsedFront ? (parsedFront.title || '') : (notebookTitle.textContent || "Carnets d'étude - Morgane Kerbiriou");
     coverFront.image = parsedFront ? (parsedFront.image || '') : '';
     coverFront.color = parsedFront ? (parsedFront.color || '') : '';
     if (typeof applyCoverColor === 'function') applyCoverColor();
@@ -5079,6 +5080,7 @@
   const letterSpacingUp = document.getElementById('letterSpacingUp');
   const letterSpacingDown = document.getElementById('letterSpacingDown');
   const blockColorInput = document.getElementById('blockColorInput');
+  const highlightColorInput = document.getElementById('highlightColorInput');
   const blockImageUrl = document.getElementById('blockImageUrl');
   const blockImageFile = document.getElementById('blockImageFile');
   const blockImagePreviewWrap = document.getElementById('blockImagePreviewWrap');
@@ -5398,12 +5400,57 @@
       styleUndoPending = false; // clic discret : la prochaine action ouvre une nouvelle étape
     });
   });
-  // Mise en forme par sélection de texte, en cours d'édition : s'appuie sur
-  // execCommand (natif du navigateur), qui gère correctement la détection
-  // gras-déjà-actif/désactivation, contrairement à une réimplémentation
-  // maison. Le HTML produit (parfois incohérent selon le navigateur — STRONG
-  // vs B, SPAN à la place de MARK pour le surlignage...) est nettoyé une
-  // fois pour de bon à la sortie d'édition, voir normalizeRichHtml().
+  // Mise en forme par sélection de texte, en cours d'édition : gras/italique/
+  // souligné s'appuient sur execCommand (natif du navigateur, gère bien la
+  // détection actif/inactif). Le surlignage, lui, est posé à la main (voir
+  // applyHighlightToSelection) plutôt que via execCommand('hiliteColor') :
+  // sans ça, la couleur ne pouvait pas être choisie (execCommand imposait
+  // une seule couleur fixe) et une deuxième application ailleurs dans le
+  // même bloc se comportait de façon incohérente selon le navigateur. Le
+  // HTML produit par execCommand (parfois incohérent selon le navigateur —
+  // STRONG vs B...) est nettoyé une fois pour de bon à la sortie d'édition,
+  // voir normalizeRichHtml().
+  function hexToRgba(hex, alpha){
+    const { r, g, b } = hexToRgb(hex);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  // Enrobe (ou retire, en bascule) la sélection courante dans un <mark>
+  // portant sa propre couleur inline — indépendant d'un bloc à l'autre et
+  // d'une sélection à l'autre, donc répétable autant de fois que voulu dans
+  // le même bloc de texte, avec une couleur différente à chaque fois si
+  // besoin.
+  function applyHighlightToSelection(color){
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return false;
+    const range = sel.getRangeAt(0);
+    // bascule : la sélection est déjà entièrement à l'intérieur d'un même
+    // <mark> -> on le retire plutôt que d'en imbriquer un nouveau dedans.
+    const startMark = (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement)?.closest('mark');
+    if (startMark && startMark.contains(range.startContainer) && startMark.contains(range.endContainer)){
+      const parent = startMark.parentNode;
+      while (startMark.firstChild) parent.insertBefore(startMark.firstChild, startMark);
+      parent.removeChild(startMark);
+      parent.normalize();
+      return true;
+    }
+    const mark = document.createElement('mark');
+    mark.style.backgroundColor = color;
+    try{
+      range.surroundContents(mark);
+    } catch(e){
+      // la sélection traverse plusieurs éléments (ex: à cheval sur un mot en
+      // gras) : surroundContents() refuse ce cas, on extrait puis ré-insère
+      // le fragment dans le <mark>, plus permissif.
+      const frag = range.extractContents();
+      mark.appendChild(frag);
+      range.insertNode(mark);
+    }
+    sel.removeAllRanges();
+    const newRange = document.createRange();
+    newRange.selectNodeContents(mark);
+    sel.addRange(newRange);
+    return true;
+  }
   function trySelectionFormat(cmd){
     if (!editingTextBlockId) return false;
     const sel = window.getSelection();
@@ -5413,13 +5460,7 @@
     if (!txt || !txt.contains(sel.anchorNode)) return false;
     try{
       if (cmd === 'highlight'){
-        // execCommand exige une couleur littérale (pas de var() CSS possible
-        // ici) : couleur fixe temporaire pendant la sélection/frappe, qui
-        // s'adapte au mode sombre dès la sortie d'édition — normalizeRichHtml
-        // convertit ce surlignage en <mark>, stylé via CSS (--highlight-color).
-        if (!document.execCommand('hiliteColor', false, 'rgba(247,229,139,.55)')){
-          document.execCommand('backColor', false, 'rgba(247,229,139,.55)');
-        }
+        if (!applyHighlightToSelection(hexToRgba(highlightColorInput.value, 0.55))) return false;
       } else {
         document.execCommand(cmd, false, null);
       }
@@ -6451,17 +6492,22 @@
         }
         const wraps = [];
         const alias = TAG_ALIAS[tag];
+        let markColor = null;
         if (alias) wraps.push(alias);
-        else if (tag === 'SPAN' || tag === 'FONT'){
+        else if (tag === 'MARK'){
+          wraps.push('MARK');
+          markColor = c.style.backgroundColor || null;
+        } else if (tag === 'SPAN' || tag === 'FONT'){
           if (impliesBold(c)) wraps.push('B');
           if (impliesItalic(c)) wraps.push('I');
           if (impliesUnderline(c)) wraps.push('U');
-          if (impliesHighlight(c)) wraps.push('MARK');
+          if (impliesHighlight(c)){ wraps.push('MARK'); markColor = c.style.backgroundColor; }
         }
         if (wraps.length === 0){ convert(c, parent); return; } // balise/enveloppe sans effet utile : on garde le contenu, pas le conteneur
         let target = parent;
         wraps.forEach(t => {
           const wrapEl = document.createElement(t.toLowerCase());
+          if (t === 'MARK' && markColor) wrapEl.style.backgroundColor = markColor;
           target.appendChild(wrapEl);
           target = wrapEl;
         });
@@ -6773,7 +6819,7 @@
     inclusiveMain.innerHTML = '';
     const frontArticle = document.createElement('article');
     const frontH3 = document.createElement('h3'); frontH3.textContent = 'Couverture';
-    const frontP = document.createElement('p'); frontP.textContent = coverFront.title || "Carnet d'étude";
+    const frontP = document.createElement('p'); frontP.textContent = coverFront.title || "Carnets d'étude - Morgane Kerbiriou";
     frontArticle.appendChild(frontH3); frontArticle.appendChild(frontP);
     inclusiveMain.appendChild(frontArticle);
 
@@ -6948,7 +6994,7 @@
   });
 
   const DEFAULT_NOTEBOOKS = [
-    ["Carnet d'étude", 'carnet-1']
+    ["Carnets d'étude - Morgane Kerbiriou", 'carnet-1']
   ];
   function refreshPlusNotebookList(){
     const list = document.getElementById('plusNotebookList');
@@ -6981,7 +7027,7 @@
         const dropdownBtn = dropdown.querySelector(`button[data-id="${n.id}"]`);
         if (dropdownBtn) dropdownBtn.remove();
         if (currentNotebookId === n.id){
-          notebookTitle.textContent = "Carnet d'étude";
+          notebookTitle.textContent = "Carnets d'étude - Morgane Kerbiriou";
           switchNotebook('carnet-1');
         }
         refreshPlusNotebookList();
@@ -7012,7 +7058,7 @@
   publicSilentBtn.addEventListener('click', () => setInclusiveMode(!inclusiveMode));
 
   function renderPublicCarnetDropdown(){
-    const list = [["Carnet d'étude", 'carnet-1'], ...customNotebooks.map(n => [n.title, n.id])];
+    const list = [["Carnets d'étude - Morgane Kerbiriou", 'carnet-1'], ...customNotebooks.map(n => [n.title, n.id])];
     publicCarnetDropdown.innerHTML = list.map(([title, id]) => {
       const active = id === currentNotebookId;
       return `<button type="button" data-id="${id}">${escapeHTML(title)}${active ? ' <span style="color:var(--ink-soft); font-weight:400;">— actif</span>' : ''}</button>`;
