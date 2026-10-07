@@ -1232,6 +1232,7 @@
   body.preview-mode .undo-redo-bar,
   body.preview-mode .visitor-counter,
   body.preview-mode .new-notebook-btn,
+  body.preview-mode .layer-toolbar,
   body.preview-mode .tools-dock{ display:none !important; }
   body.artist-mode.preview-mode .public-toolbar{ display:flex; }
   /* ---- mode artiste : aperçu de la vue lecture accessible (DYS, voix,
@@ -1561,6 +1562,31 @@
   body.artist-mode .content-block{ cursor:move; }
   body.artist-mode .content-block:hover,
   .content-block.selected{ outline:1.5px dashed rgba(251,133,0,.55); outline-offset:4px; }
+  /* sélection multiple en cours de constitution (Maj+clic), avant Cmd/Ctrl+G :
+     trait plus épais et continu pour ne pas se confondre avec .selected */
+  .content-block.multi-selected{ outline:2.5px dashed var(--esprit); outline-offset:4px; }
+  /* autres membres du groupe du bloc sélectionné : simple indice visuel,
+     pas de poignées (ils ne sont pas "sélectionnés" individuellement) */
+  .content-block.group-sibling-highlight{ outline:1.5px dashed rgba(251,133,0,.3); outline-offset:4px; }
+
+  /* ---- menu contextuel (clic droit sur un bloc) : grouper / dissocier ---- */
+  .block-context-menu{
+    position:fixed; z-index:72; display:none; flex-direction:column;
+    width:170px; padding:6px;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(14px);
+    border:1px solid rgba(38,35,25,.12); border-radius:12px;
+    box-shadow: 0 20px 44px rgba(20,17,10,.22), 0 3px 10px rgba(20,17,10,.14);
+  }
+  .block-context-menu.open{ display:flex; }
+  .block-context-menu button{
+    display:flex; align-items:center; gap:8px; width:100%; border:none; background:none;
+    padding:8px 9px; border-radius:8px; cursor:pointer; text-align:left;
+    font-family:'Inter', sans-serif; font-size:12.5px; font-weight:600; color: var(--ink);
+  }
+  .block-context-menu button:hover{ background: rgba(251,133,0,.1); }
+  .block-context-menu button svg{ width:15px; height:15px; flex-shrink:0; opacity:.75; }
+  body.dark-mode .block-context-menu{ background: rgba(66,72,76,.92); border-color: rgba(244,245,245,.18); }
+  body.dark-mode .block-context-menu button:hover{ background: #F4F5F5; color:#42484C; }
   .content-block.editing{ outline:2px solid var(--esprit); outline-offset:3px; touch-action:auto; }
   .content-block.editing .block-resize,
   .content-block.editing .block-delete{ display:none; }
@@ -1901,6 +1927,7 @@
        dans le menu « + » (raccourci ajouté en haut de panelPlus) pour
        laisser plus d'espace tactile aux outils courants. */
     .artist-dock .dock-btn[data-tool="enveloppe"]{ display:none; }
+    .artist-dock #artistLayersBtn{ display:none; }
     .mobile-only-shortcuts{ display:flex; }
 
     /* ---- masquage auto du chrome flottant au repos (lecture) : laisse
@@ -2029,6 +2056,9 @@
     </button>
     <button class="dock-btn" data-tool="forme" type="button" aria-label="Forme">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><circle cx="17.5" cy="6.5" r="4"/><path d="M12 21l4-8h-8l4 8Z"/></svg>
+    </button>
+    <button class="dock-btn" id="artistLayersBtn" type="button" aria-label="Calques" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
     </button>
   </div>
 
@@ -2332,6 +2362,7 @@
     <div class="panel-content" id="panelPlus" style="display:none;">
       <div class="tool-row mobile-only-shortcuts" style="margin-bottom:12px;">
         <button class="accordion-action" id="plusOpenEnveloppeBtn" type="button" style="flex:1;">Enveloppe</button>
+        <button class="accordion-action" id="plusOpenLayersBtn" type="button" style="flex:1;">Calques</button>
       </div>
       <button class="accordion-row" data-accordion="background" type="button">
         Modifier l'arrière-plan
@@ -2748,6 +2779,17 @@
     <div class="layer-list" id="layerList" role="listbox" aria-label="Calques de cette page"></div>
   </div>
 
+  <div class="block-context-menu" id="blockContextMenu">
+    <button type="button" data-action="group">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M8 11v2a2 2 0 002 2h2M16 13V9a2 2 0 00-2-2h-2"/></svg>
+      Grouper
+    </button>
+    <button type="button" data-action="ungroup">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/><path d="M4 20L20 4"/></svg>
+      Dissocier
+    </button>
+  </div>
+
   <div class="page-nav">
     <button class="page-nav__arrow" id="prevBtn" aria-label="Page précédente" title="Page précédente">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
@@ -3037,6 +3079,8 @@
     else if ((e.ctrlKey || e.metaKey) && key === 'd'){ e.preventDefault(); if (typeof duplicateSelectedBlock === 'function') duplicateSelectedBlock(); }
     else if ((e.ctrlKey || e.metaKey) && key === 'c'){ if (typeof copySelectedBlock === 'function' && selectedBlockId) { e.preventDefault(); copySelectedBlock(); } }
     else if ((e.ctrlKey || e.metaKey) && key === 'v'){ if (typeof pasteBlockClipboard === 'function' && blockClipboard) { e.preventDefault(); pasteBlockClipboard(); } }
+    else if ((e.ctrlKey || e.metaKey) && e.altKey && key === 'g'){ e.preventDefault(); if (typeof ungroupSelectedBlock === 'function') ungroupSelectedBlock(); }
+    else if ((e.ctrlKey || e.metaKey) && key === 'g'){ e.preventDefault(); if (typeof groupSelectedBlocks === 'function') groupSelectedBlocks(); }
   });
   // ---- copier/coller un bloc d'une page à l'autre (Ctrl+C / Ctrl+V) ----
   // Presse-papier interne au carnet (pas le presse-papier système) : simple
@@ -3059,6 +3103,7 @@
     clone.id = genId();
     clone.spread = spread;
     clone.side = targetSide;
+    delete clone.groupId; // ne rejoint pas silencieusement le groupe d'origine (potentiellement sur une autre page)
     blocksCache.push(clone);
     await persistBlocks();
     renderBlocksForSpread();
@@ -4375,6 +4420,7 @@
     if (on){
       closeArtistPanel();
       deselectBlock();
+      if (typeof setLayerPanelOpen === 'function') setLayerPanelOpen(false);
       if (typeof exitTextEditMode === 'function') exitTextEditMode();
       if (typeof closeCropMode === 'function') closeCropMode();
       setDrawTool(null);
@@ -4476,6 +4522,7 @@
       if (typeof exitTextEditMode === 'function') exitTextEditMode();
       if (typeof closeCropMode === 'function') closeCropMode();
       deselectBlock();
+      if (typeof setLayerPanelOpen === 'function') setLayerPanelOpen(false);
       closeBlockPanel();
       closeArtistPanel();
       setPlacingBlockType(null);
@@ -4876,6 +4923,14 @@
 
   // ============ MODE ARTISTE : dock d'outils vertical (Texte / Image / + / Dessin / Forme) ============
   const artistDock = document.getElementById('artistDock');
+  const artistLayersBtn = document.getElementById('artistLayersBtn');
+  artistLayersBtn.addEventListener('click', () => {
+    setLayerPanelOpen(!document.getElementById('layerToolbar').classList.contains('open'));
+  });
+  document.getElementById('plusOpenLayersBtn').addEventListener('click', () => {
+    closeArtistPanel();
+    setLayerPanelOpen(true);
+  });
   const artistPanel = document.getElementById('artistPanel');
   const artistPanelTitle = document.getElementById('artistPanelTitle');
   const artistPanelClose = document.getElementById('artistPanelClose');
@@ -5165,8 +5220,25 @@
           }
           const canvas = document.createElement('canvas');
           canvas.width = width; canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality != null ? quality : IMAGE_JPEG_QUALITY));
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          // Un PNG (ou GIF/WEBP) avec transparence réelle était toujours
+          // réexporté en JPEG ci-dessous — un JPEG n'a pas de canal alpha,
+          // ses zones transparentes y devenaient donc noires. On détecte
+          // une vraie transparence (au moins un pixel non totalement
+          // opaque) et on exporte alors en PNG, sans perte, pour la
+          // conserver ; le JPEG recompressé (plus léger) reste utilisé pour
+          // les images opaques (photos…), où il n'y a rien à perdre.
+          let hasAlpha = false;
+          try{
+            const { data } = ctx.getImageData(0, 0, width, height);
+            for (let i = 3; i < data.length; i += 4){
+              if (data[i] < 255){ hasAlpha = true; break; }
+            }
+          } catch(e){ /* lecture impossible (cas rarissime) : repli sur le JPEG */ }
+          resolve(hasAlpha
+            ? canvas.toDataURL('image/png')
+            : canvas.toDataURL('image/jpeg', quality != null ? quality : IMAGE_JPEG_QUALITY));
         };
         img.src = reader.result;
       };
@@ -6263,6 +6335,14 @@
     el.addEventListener('click', (e) => {
       if (!artistMode) return;
       e.stopPropagation();
+      // Maj+clic : ajoute/retire ce bloc de la sélection multiple en cours
+      // de constitution (pour grouper, voir groupSelectedBlocks) — distinct
+      // de la sélection normale (édition de style/bordure…), qui reste
+      // scopée à UN seul bloc à la fois, inchangée en dessous.
+      if (e.shiftKey){
+        toggleMultiSelect(b.id);
+        return;
+      }
       // Ce bloc est déjà en cours d'édition : un clic ici ne fait que
       // repositionner le curseur (comportement natif du contenteditable),
       // il ne doit surtout pas re-déclencher selectBlock() — sinon l'état
@@ -6280,6 +6360,7 @@
         enterTextEditMode(b.id);
         return;
       }
+      clearMultiSelect();
       selectBlock(b.id);
     });
     el.addEventListener('dblclick', (e) => {
@@ -6373,9 +6454,25 @@
       let ny = (e.clientY - offY - pageRect.top) / pageRect.height;
       nx = Math.min(Math.max(nx, 0), 1 - b.relW);
       ny = Math.min(Math.max(ny, 0), 1 - b.relH);
+      const dx = nx - b.relX, dy = ny - b.relY;
       el.style.left = (nx * 100) + '%';
       el.style.top = (ny * 100) + '%';
       b.relX = nx; b.relY = ny;
+      // objet groupé (voir groupSelectedBlocks) : les autres membres du même
+      // groupe, sur le même côté, suivent du même delta — c'est là tout
+      // l'intérêt de grouper, pouvoir les déplacer comme un seul bloc.
+      if (b.groupId){
+        blocksCache.forEach(sib => {
+          if (sib === b || sib.groupId !== b.groupId || sib.spread !== b.spread || sib.side !== dragSide) return;
+          sib.relX = Math.min(Math.max(sib.relX + dx, 0), 1 - sib.relW);
+          sib.relY = Math.min(Math.max(sib.relY + dy, 0), 1 - sib.relH);
+          const sibEl = document.getElementById(sib.id);
+          if (sibEl){
+            sibEl.style.left = (sib.relX * 100) + '%';
+            sibEl.style.top = (sib.relY * 100) + '%';
+          }
+        });
+      }
     });
     el.addEventListener('pointerup', async (e) => {
       if (!dragging) return;
@@ -6629,6 +6726,7 @@
     clone.id = genId();
     clone.relX = Math.min(1 - clone.relW, clone.relX + 0.02);
     clone.relY = Math.min(1 - clone.relH, clone.relY + 0.02);
+    delete clone.groupId; // ne rejoint pas silencieusement le groupe d'origine
     blocksCache.push(clone);
     await persistBlocks();
     renderBlocksForSpread();
@@ -6778,15 +6876,132 @@
     row.addEventListener('pointercancel', endDrag);
   }
 
+  // ---- regroupement de blocs (Maj+clic pour composer la sélection, puis
+  // Cmd/Ctrl+G pour grouper, Cmd/Ctrl+Alt+G pour dissocier, ou clic droit) ----
+  // Volontairement léger : un groupe n'est qu'un `groupId` partagé entre
+  // plusieurs blocs, pas un conteneur à part — un objet groupé reste un
+  // bloc normal (texte/image/forme/lien), juste "attaché" aux autres
+  // membres pour le déplacement (voir le glisser dans buildBlockElement).
+  // Redimensionner/pivoter/styler continue à cibler le seul bloc cliqué :
+  // seul le déplacement est partagé entre tous les membres du groupe.
+  let multiSelectIds = new Set();
+  function toggleMultiSelect(id){
+    const el = document.getElementById(id);
+    if (multiSelectIds.has(id)){
+      multiSelectIds.delete(id);
+      el?.classList.remove('multi-selected');
+    } else {
+      multiSelectIds.add(id);
+      el?.classList.add('multi-selected');
+    }
+  }
+  function clearMultiSelect(){
+    multiSelectIds.forEach(id => document.getElementById(id)?.classList.remove('multi-selected'));
+    multiSelectIds.clear();
+  }
+  async function groupSelectedBlocks(){
+    if (!artistMode) return;
+    if (multiSelectIds.size < 2){
+      showToast('Maj+clic sur au moins 2 objets avant de grouper.', true);
+      return;
+    }
+    const ids = [...multiSelectIds];
+    const members = ids.map(id => blocksCache.find(x => x.id === id)).filter(Boolean);
+    // un groupe ne vaut que pour des objets d'une même page/côté — se
+    // déplacer ensemble n'a de sens que là où ils se trouvent ensemble.
+    const ref = members[0];
+    if (!ref || members.some(b => b.spread !== ref.spread || b.side !== ref.side)){
+      showToast('Les objets à grouper doivent être sur la même page.', true);
+      return;
+    }
+    pushUndo();
+    const gid = genId();
+    members.forEach(b => { b.groupId = gid; });
+    await persistBlocks();
+    clearMultiSelect();
+    renderBlocksForSpread();
+    selectBlock(ref.id);
+    showToast('Objets groupés — Cmd/Ctrl+Alt+G pour dissocier.');
+  }
+  async function ungroupSelectedBlock(){
+    if (!artistMode) return;
+    const b = blocksCache.find(x => x.id === selectedBlockId);
+    if (!b || !b.groupId){
+      showToast('Sélectionnez un objet groupé à dissocier.', true);
+      return;
+    }
+    pushUndo();
+    const gid = b.groupId;
+    blocksCache.forEach(x => { if (x.groupId === gid) delete x.groupId; });
+    await persistBlocks();
+    renderBlocksForSpread();
+    selectBlock(b.id);
+    showToast('Groupe dissocié.');
+  }
+
+  // ---- menu contextuel (clic droit) : mêmes actions que les raccourcis,
+  // pour qui préfère la souris — reflète l'état courant de la sélection. ----
+  const blockContextMenu = document.getElementById('blockContextMenu');
+  function closeBlockContextMenu(){ blockContextMenu?.classList.remove('open'); }
+  function openBlockContextMenu(x, y, blockId){
+    if (!artistMode || !blockContextMenu) return;
+    const b = blocksCache.find(bl => bl.id === blockId);
+    // clic droit sur un objet hors de toute sélection multiple en cours :
+    // le sélectionne normalement, pour que "Dissocier" sache sur quoi agir.
+    if (multiSelectIds.size === 0) selectBlock(blockId);
+    blockContextMenu.querySelector('[data-action="group"]').style.display = multiSelectIds.size >= 2 ? 'flex' : 'none';
+    blockContextMenu.querySelector('[data-action="ungroup"]').style.display = (b && b.groupId) ? 'flex' : 'none';
+    const w = 170;
+    blockContextMenu.style.left = Math.min(x, window.innerWidth - w - 10) + 'px';
+    blockContextMenu.style.top = Math.min(y, window.innerHeight - 90) + 'px';
+    blockContextMenu.classList.add('open');
+  }
+  document.addEventListener('contextmenu', (e) => {
+    if (!artistMode) return;
+    const blockEl = e.target.closest('.content-block');
+    if (!blockEl){ closeBlockContextMenu(); return; }
+    e.preventDefault();
+    openBlockContextMenu(e.clientX, e.clientY, blockEl.id);
+  });
+  blockContextMenu?.addEventListener('click', (e) => {
+    const action = e.target.closest('button')?.dataset.action;
+    if (action === 'group') groupSelectedBlocks();
+    else if (action === 'ungroup') ungroupSelectedBlock();
+    closeBlockContextMenu();
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.block-context-menu')) closeBlockContextMenu(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeBlockContextMenu(); });
+
+  // ---- panneau calques : ouverture/fermeture indépendante de la sélection
+  // (bouton dédié #artistLayersBtn dans le dock, voir plus bas), contraire-
+  // ment à avant où il n'était visible que le temps d'une sélection. La
+  // sélection d'un bloc continue à l'ouvrir automatiquement (utile pour
+  // voir où il se situe dans la pile), mais la désélection ne le referme
+  // plus — une fois ouvert à la main, il le reste jusqu'à ce qu'on le
+  // referme soi-même. ----
+  function setLayerPanelOpen(on){
+    const panel = document.getElementById('layerToolbar');
+    panel.classList.toggle('open', on);
+    artistLayersBtn.classList.toggle('active', on);
+    artistLayersBtn.setAttribute('aria-pressed', String(on));
+    if (on) renderLayerList();
+  }
   function selectBlock(id){
     selectedBlockId = id;
-    document.getElementById('layerToolbar').classList.add('open');
-    renderLayerList();
+    setLayerPanelOpen(true);
     styleUndoPending = false; // nouvelle sélection = nouveau groupe d'annulation pour le style
     imgBorderUndoPending = false;
     shapeBorderUndoPending = false;
     document.querySelectorAll('.content-block').forEach(n => n.classList.toggle('selected', n.id === id));
     const b = blocksCache.find(x => x.id === id);
+    // indique les autres membres du même groupe (voir groupSelectedBlocks) :
+    // ils suivront ce bloc au déplacement, même sans être sélectionnés eux-mêmes.
+    document.querySelectorAll('.content-block.group-sibling-highlight').forEach(n => n.classList.remove('group-sibling-highlight'));
+    if (b && b.groupId){
+      blocksCache.filter(x => x.groupId === b.groupId && x.id !== b.id).forEach(x => {
+        document.getElementById(x.id)?.classList.add('group-sibling-highlight');
+      });
+    }
     if (b && b.type === 'text'){
       blockFontFamily.value = b.fontFamily;
       blockSizeInput.value = b.fontSize;
@@ -6827,11 +7042,12 @@
   }
   function deselectBlock(){
     selectedBlockId = null;
-    document.getElementById('layerToolbar').classList.remove('open');
     styleUndoPending = false;
     imgBorderUndoPending = false;
     shapeBorderUndoPending = false;
-    document.querySelectorAll('.content-block').forEach(n => n.classList.remove('selected'));
+    document.querySelectorAll('.content-block').forEach(n => n.classList.remove('selected', 'group-sibling-highlight'));
+    if (document.getElementById('layerToolbar').classList.contains('open')) renderLayerList(); // efface le surlignage, sans refermer le panneau
+    clearMultiSelect();
   }
   document.addEventListener('click', (e) => {
     if (editingTextBlockId && !e.target.closest('#' + editingTextBlockId)) exitTextEditMode();
