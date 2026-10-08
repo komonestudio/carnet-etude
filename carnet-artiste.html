@@ -2080,6 +2080,7 @@
         <div class="storage-usage__bar"><div class="storage-usage__fill" id="storageUsageFill"></div></div>
         <div class="storage-usage__label" id="storageUsageLabel">Poids du carnet : …</div>
       </div>
+      <button class="accordion-action" id="cleanupImagesBtn" type="button" style="margin-bottom:12px;">🧹 Nettoyer les images inutilisées</button>
 
       <button class="accordion-row" data-accordion="notebooks" type="button">
         Autre carnet
@@ -2925,6 +2926,42 @@
     memoryFallback[key] = value;
     return true;
   }
+  // Variante stricte, pour les images stockées une par une : contrairement à
+  // storageSet, un échec Firebase n'est PAS masqué par un repli sur le
+  // stockage local de l'artiste (les visiteurs ne verraient alors jamais
+  // l'image) — renvoie false, l'appelant garde l'image dans le bloc.
+  async function storageSetStrict(key, value, shared){
+    try{
+      if (window.storage && window.storage.set){
+        await window.storage.set(key, value, shared);
+        return true;
+      }
+    } catch(e){ return false; }
+    if (shared && firebaseDb){
+      try{
+        await firebaseDb.ref('shared/' + key).set(value);
+        return true;
+      } catch(e){ return false; }
+    }
+    return storageSet(key, value, shared); // hors Firebase (essai local) : même repli que le reste
+  }
+  async function storageDelete(key, shared){
+    try{
+      if (window.storage && window.storage.delete){
+        await window.storage.delete(key, shared);
+        return true;
+      }
+    } catch(e){ /* clé déjà absente : rien à faire */ }
+    if (shared && firebaseDb){
+      try{
+        await firebaseDb.ref('shared/' + key).remove();
+        return true;
+      } catch(e){ return false; }
+    }
+    try{ localStorage.removeItem('carnet:' + key); } catch(e){}
+    delete memoryFallback[key];
+    return true;
+  }
 
   // Petit message temporaire non bloquant (remplace alert()/confirm(), qui
   // peuvent être bloqués dans un iframe d'aperçu en bac à sable).
@@ -2974,6 +3011,14 @@
   let postitsCache = [];   // post-it du carnet actuellement chargé (partagé)
   let blocksCache = [];    // blocs texte/image posés par l'artiste (partagé)
   let drawingsCache = {};  // traits de dessin, groupés par "spread-side" (partagé)
+  // Images des blocs : stockées chacune sous leur propre clé (`img:<carnet>:<id>`)
+  // plutôt que noyées dans la valeur `blocks:<carnet>` (plafonnée à 10 Mo en
+  // tout) — le bloc ne garde qu'une référence `imgref:<id>`. imageIndex =
+  // { id: poids en octets } de toutes les images stockées pour ce carnet
+  // (sert à la jauge et au nettoyage, sans avoir à lister la base).
+  let imageIndex = {};
+  const imageLoadCache = new Map();    // "<carnet>:<id>" -> Promise<dataURL>
+  const pendingImageLoads = new Set(); // chargements d'images en cours (utile à l'export PDF)
 
   // ============ Historique annuler / rétablir (mode artiste) ============
   // Système par instantané : avant chaque action structurante (création,
@@ -4320,6 +4365,10 @@
     try{ blocksCache = rawBlocks ? JSON.parse(rawBlocks) : []; }
     catch(e){ blocksCache = []; }
 
+    const rawImageIndex = await storageGet('imgIndex:' + currentNotebookId, true);
+    try{ imageIndex = rawImageIndex ? JSON.parse(rawImageIndex) : {}; }
+    catch(e){ imageIndex = {}; }
+
     const rawComments = await storageGet('comments:' + currentNotebookId, true);
     try{ commentsCache = rawComments ? JSON.parse(rawComments) : []; }
     catch(e){ commentsCache = []; }
@@ -5458,7 +5507,13 @@
       blockImageFile.value = '';
       blockImageQuality.value = IMAGE_JPEG_QUALITY;
       blockImageQualityLabel.textContent = Math.round(IMAGE_JPEG_QUALITY * 100) + ' % · …';
-      if (existing && existing.src && existing.src.startsWith('data:')){
+      if (existing && isImageRef(existing.src)){
+        // image stockée à part : on charge son aperçu, le champ URL reste vide
+        blockImageUrl.value = '';
+        blockImagePreviewWrap.style.display = 'block';
+        blockImagePreview.removeAttribute('src');
+        loadImageData(existing.src).then(d => { if (d) blockImagePreview.src = d; });
+      } else if (existing && existing.src && existing.src.startsWith('data:')){
         // image précédemment téléversée (stockée en data URL) : on la ré-affiche
         // en aperçu, le champ URL reste vide (elle n'a jamais eu d'URL externe)
         blockImageUrl.value = '';
@@ -5790,7 +5845,123 @@
     closeBlockPanel();
   });
 
-  function persistBlocks(){ return storageSet('blocks:' + currentNotebookId, JSON.stringify(blocksCache), true); }
+  // <<IMG-STORE-START>>
+  const IMG_REF_PREFIX = 'imgref:';
+  function isImageRef(src){ return typeof src === 'string' && src.startsWith(IMG_REF_PREFIX); }
+  // Identifiant dérivé du contenu (deux empreintes 32 bits + longueur) : la
+  // même image importée deux fois — ou dupliquée par copier/coller — partage
+  // la même clé au lieu d'être stockée en double.
+  function imageContentId(str){
+    let h1 = 0x811c9dc5, h2 = 5381;
+    for (let i = 0; i < str.length; i++){
+      const c = str.charCodeAt(i);
+      h1 ^= c; h1 = Math.imul(h1, 0x01000193);
+      h2 = Math.imul(h2, 33) ^ c;
+    }
+    return 'i' + (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36) + str.length.toString(36);
+  }
+  function persistImageIndex(nb){
+    return storageSet('imgIndex:' + nb, JSON.stringify(imageIndex), true);
+  }
+  // Stocke une image (data URL) sous sa propre clé et renvoie sa référence ;
+  // null si l'écriture a échoué (l'image reste alors dans le bloc).
+  async function storeImageData(dataUrl, nb){
+    const id = imageContentId(dataUrl);
+    if (!imageIndex[id]){
+      const ok = await storageSetStrict('img:' + nb + ':' + id, dataUrl, true);
+      if (!ok) return null;
+      imageIndex[id] = dataUrl.length;
+    }
+    imageLoadCache.set(nb + ':' + id, Promise.resolve(dataUrl));
+    return IMG_REF_PREFIX + id;
+  }
+  // Résout une valeur `src` de bloc en quelque chose d'affichable : une URL
+  // ou un data URL est renvoyé tel quel, une référence est chargée (une seule
+  // fois par session, puis servie depuis le cache).
+  function loadImageData(src){
+    if (!isImageRef(src)) return Promise.resolve(src);
+    const id = src.slice(IMG_REF_PREFIX.length);
+    const nb = currentNotebookId;
+    const ck = nb + ':' + id;
+    if (imageLoadCache.has(ck)) return imageLoadCache.get(ck);
+    const p = storageGet('img:' + nb + ':' + id, true).then(d => d || '', () => '');
+    imageLoadCache.set(ck, p);
+    p.then(d => { if (!d) imageLoadCache.delete(ck); }); // échec : on pourra réessayer
+    return p;
+  }
+  function setBlockImageSrc(img, src){
+    if (!isImageRef(src)){ img.src = src; return; }
+    const p = loadImageData(src).then(data => new Promise(resolve => {
+      if (!data){ resolve(); return; }
+      img.addEventListener('load', resolve, { once: true });
+      img.addEventListener('error', resolve, { once: true });
+      img.src = data;
+    }));
+    pendingImageLoads.add(p);
+    p.then(() => pendingImageLoads.delete(p));
+  }
+  // Passe les images encore embarquées (data URL) vers leurs propres clés —
+  // migration automatique des carnets existants, au fil des sauvegardes.
+  async function migrateBlockImages(){
+    const nb = currentNotebookId;
+    let stored = 0, failed = 0;
+    for (const b of blocksCache){
+      if (b.type !== 'image' || typeof b.src !== 'string' || !b.src.startsWith('data:')) continue;
+      const ref = await storeImageData(b.src, nb);
+      if (currentNotebookId !== nb) return; // changement de carnet en cours de route : on s'arrête là
+      if (ref){ b.src = ref; stored++; } else failed++;
+    }
+    if (stored) await persistImageIndex(nb);
+    if (failed) showToast("Une image n'a pas pu être enregistrée à part : elle reste dans le bloc (limite de poids du carnet).", true);
+  }
+  // Écritures groupées : si plusieurs sauvegardes sont demandées pendant
+  // qu'une est en cours (curseur glissé, etc.), une seule suivante est
+  // rejouée avec l'état le plus récent — jamais un empilement d'écritures.
+  let persistRunning = null, persistAgain = false;
+  function persistBlocks(){
+    if (persistRunning){ persistAgain = true; return persistRunning; }
+    persistRunning = (async () => {
+      try{
+        do{
+          persistAgain = false;
+          try{ await migrateBlockImages(); } catch(e){ console.error('Migration des images impossible', e); }
+          await storageSet('blocks:' + currentNotebookId, JSON.stringify(blocksCache), true);
+        } while (persistAgain);
+      } finally { persistRunning = null; }
+    })();
+    return persistRunning;
+  }
+  // Supprime de la base les images qu'aucun bloc n'utilise plus (objets
+  // supprimés, pages supprimées…). Garde-fous : on vide d'abord les
+  // sauvegardes en attente, on relit les blocs tels qu'ils sont réellement
+  // stockés (au cas où un autre appareil en aurait ajouté), et on protège
+  // aussi l'image du presse-papiers interne.
+  async function cleanupUnusedImages(){
+    const nb = currentNotebookId;
+    if (persistRunning) await persistRunning;
+    await persistBlocks(); // migre au passage les images encore embarquées
+    const used = new Set();
+    const collect = (list) => (list || []).forEach(b => { if (b && b.type === 'image' && isImageRef(b.src)) used.add(b.src.slice(IMG_REF_PREFIX.length)); });
+    collect(blocksCache);
+    try{
+      const raw = await storageGet('blocks:' + nb, true);
+      collect(raw ? JSON.parse(raw) : []);
+    } catch(e){ return { removed: 0, freed: 0, aborted: true }; } // doute sur l'état réel : on ne supprime rien
+    if (typeof blockClipboard !== 'undefined' && blockClipboard) collect([blockClipboard]);
+    const unused = Object.keys(imageIndex).filter(id => !used.has(id));
+    let freed = 0, removed = 0;
+    for (const id of unused){
+      if (await storageDelete('img:' + nb + ':' + id, true)){
+        freed += imageIndex[id] || 0;
+        delete imageIndex[id];
+        imageLoadCache.delete(nb + ':' + id);
+        removed++;
+      }
+    }
+    if (removed) await persistImageIndex(nb);
+    return { removed, freed, aborted: false };
+  }
+  // <<IMG-STORE-END>>
 
   function renderBlocksForSpread(){
     document.querySelectorAll('.content-block').forEach(n => n.remove());
@@ -6208,7 +6379,7 @@
       img.draggable = false;
       mask.appendChild(img);
       el.appendChild(mask);
-      img.src = b.src;
+      setBlockImageSrc(img, b.src);
       applyImageBorder(b, el);
     } else if (b.type === 'shape'){
       const wrap = document.createElement('div');
@@ -7167,7 +7338,7 @@
   function buildInclusiveBlockNode(b){
     if (b.type === 'image'){
       const img = document.createElement('img');
-      img.src = b.src; img.alt = '';
+      setBlockImageSrc(img, b.src); img.alt = '';
       return img;
     }
     const p = document.createElement('p');
@@ -7496,7 +7667,7 @@
   // Le stockage partagé limite chaque clé à 5 Mo ; « blocks » (qui embarque
   // les images téléversées en base64) est la clé la plus susceptible
   // d'approcher cette limite. On l'affiche pour prévenir avant blocage.
-  const STORAGE_KEY_LIMIT = 5 * 1024 * 1024; // 5 Mo, limite par clé du stockage partagé
+  const STORAGE_KEY_LIMIT = (firebaseDb ? 10 : 5) * 1024 * 1024; // 10 Mo par valeur sur Firebase, 5 Mo dans l'aperçu Claude
   function formatBytes(n){
     if (n < 1024) return n + ' o';
     if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' ko';
@@ -7510,12 +7681,41 @@
     const postitsBytes = new Blob([JSON.stringify(postitsCache)]).size;
     const drawingsBytes = new Blob([JSON.stringify(drawingsCache)]).size;
     const commentsBytes = new Blob([JSON.stringify(commentsCache)]).size;
+    // images stockées à part : poids des utilisées, nombre/poids des inutilisées
+    const usedIds = new Set(blocksCache.filter(b => b.type === 'image' && isImageRef(b.src)).map(b => b.src.slice(IMG_REF_PREFIX.length)));
+    let imagesBytes = 0, unusedBytes = 0, unusedCount = 0;
+    Object.keys(imageIndex).forEach(id => {
+      if (usedIds.has(id)) imagesBytes += imageIndex[id] || 0;
+      else { unusedBytes += imageIndex[id] || 0; unusedCount++; }
+    });
     const ratio = Math.min(1, blocksBytes / STORAGE_KEY_LIMIT);
     fill.style.width = (ratio * 100) + '%';
     fill.classList.toggle('warn', ratio > 0.8);
-    label.textContent = `Poids du carnet : ${formatBytes(blocksBytes + postitsBytes + drawingsBytes + commentsBytes)}` +
-      (ratio > 0.8 ? ` — attention, les blocs (images) approchent la limite de ${formatBytes(STORAGE_KEY_LIMIT)}` : '');
+    label.textContent = `Poids du carnet : ${formatBytes(blocksBytes + postitsBytes + drawingsBytes + commentsBytes + imagesBytes)}` +
+      (imagesBytes ? ` (dont images : ${formatBytes(imagesBytes)})` : '') +
+      (unusedCount ? ` · ${unusedCount} image${unusedCount > 1 ? 's' : ''} inutilisée${unusedCount > 1 ? 's' : ''} (${formatBytes(unusedBytes)})` : '') +
+      (ratio > 0.8 ? ` — attention, les blocs approchent la limite de ${formatBytes(STORAGE_KEY_LIMIT)}` : '');
   }
+
+  document.getElementById('cleanupImagesBtn').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try{
+      const res = await cleanupUnusedImages();
+      if (res.aborted){
+        showToast("Nettoyage annulé : impossible de relire l'état du carnet.", true);
+      } else if (!res.removed){
+        showToast('Aucune image inutilisée à supprimer.');
+      } else {
+        clearHistory(); // plus aucune étape d'annulation ne doit pointer vers une image supprimée
+        showToast(`${res.removed} image${res.removed > 1 ? 's' : ''} supprimée${res.removed > 1 ? 's' : ''} — ${formatBytes(res.freed)} libérés.`);
+      }
+      refreshStorageUsage();
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   // ============ Export de la double-page (PDF) ============
   // html2canvas capture le DOM du carnet en image ; jsPDF l'encapsule dans
@@ -7622,6 +7822,7 @@
         renderSpread(s); // rendu instantané, sans animation de tournage
         // laisse le DOM (images, canvases) se stabiliser avant capture
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        await Promise.all([...pendingImageLoads]); // images stockées à part, chargées à la demande
         const canvas = await captureSpreadCanvas();
         const orientation = canvas.width > canvas.height ? 'landscape' : 'portrait';
         if (!pdf){
