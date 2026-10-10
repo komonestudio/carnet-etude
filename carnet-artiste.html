@@ -1337,7 +1337,7 @@
   .layer-toolbar{
     position:fixed; bottom:80px; left:30px; z-index:50;
     display:none; flex-direction:column; gap:6px;
-    width:216px; max-height:min(55vh, 400px);
+    width:252px; max-height:min(55vh, 420px);
     background: rgba(255,255,255,.65); backdrop-filter: blur(10px);
     border:1px solid rgba(38,35,25,.12); border-radius:14px; padding:8px;
     box-shadow: 0 4px 14px rgba(20,17,10,.16);
@@ -1374,6 +1374,44 @@
   .layer-row__icon{ width:14px; height:14px; flex-shrink:0; opacity:.65; }
   .layer-row__icon svg{ width:100%; height:100%; }
   .layer-row__label{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .layer-row{ border-left:3px solid transparent; }
+  .layer-row.in-group{ border-left-color: var(--grp, var(--esprit)); }
+  .layer-row.is-hidden .layer-row__label,
+  .layer-row.is-hidden .layer-row__thumb{ opacity:.4; }
+  .layer-row__thumb{
+    width:26px; height:26px; flex-shrink:0; border-radius:6px; overflow:hidden;
+    background: rgba(38,35,25,.07) center / cover no-repeat;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .layer-row__thumb--shape{ padding:4px; }
+  .layer-row__thumb svg, .layer-row__thumb > div{ width:100%; height:100%; display:block; }
+  .layer-row__thumb .layer-row__icon{ width:14px; height:14px; }
+  .layer-row__group{
+    flex-shrink:0; font-size:9px; font-weight:800; line-height:1; letter-spacing:.02em;
+    padding:3px 5px; border-radius:999px; color:#fff; background: var(--grp, var(--esprit));
+  }
+  .layer-row__btn{
+    flex-shrink:0; width:22px; height:22px; padding:0; border:none; border-radius:6px; cursor:pointer;
+    background:transparent; color:inherit; opacity:.35;
+    display:flex; align-items:center; justify-content:center;
+    transition: opacity .12s ease, background .12s ease;
+  }
+  .layer-row__btn svg{ width:13px; height:13px; }
+  .layer-row:hover .layer-row__btn{ opacity:.7; }
+  .layer-row__btn:hover{ opacity:1 !important; background: rgba(251,133,0,.14); }
+  .layer-row__lock.on{ opacity:1; color: var(--corps); }
+  .layer-row__eye.off{ opacity:1; color: var(--corps); }
+  .layer-row__rename{
+    flex:1; min-width:0; font:inherit; color:var(--ink); background:#fff;
+    border:1px solid var(--esprit); border-radius:6px; padding:3px 6px; outline:none;
+  }
+  .layer-toolbar__hint{
+    font-family:'Newsreader', serif; font-style:italic; font-size:10.5px;
+    color: var(--ink-soft); text-align:center; padding-top:4px; flex-shrink:0;
+  }
+  body.dark-mode .layer-row__thumb{ background-color: rgba(255,255,255,.12); }
+  body.dark-mode .layer-row__rename{ background:#D3D7D9; color:#42484C; }
+  body.dark-mode .layer-row__btn:hover{ background: rgba(255,255,255,.16); }
   body.dark-mode .layer-row:hover{ background: rgba(255,255,255,.12); }
   body.dark-mode .layer-row.selected{ background: rgba(7,42,197,.28); color:#9db2ff; }
   body.dark-mode .layer-toolbar__quick{ border-color: rgba(255,255,255,.15); }
@@ -2739,6 +2777,7 @@
       </button>
     </div>
     <div class="layer-list" id="layerList" role="listbox" aria-label="Calques de cette page"></div>
+    <div class="layer-toolbar__hint">Double-clic : renommer · glisser : réordonner</div>
   </div>
 
   <div class="block-context-menu" id="blockContextMenu">
@@ -3197,7 +3236,7 @@
     ['left', 'right'].forEach(side => {
       const container = side === 'left' ? entriesLeft : entriesRight;
       const hasPostit = postitsCache.some(p => p.spread === spread && p.side === side);
-      const hasBlock = blocksCache.some(b => b.spread === spread && b.side === side);
+      const hasBlock = blocksCache.some(b => b.spread === spread && b.side === side && !b.hidden);
       if (!hasPostit && !hasBlock){
         const hint = document.createElement('div');
         hint.className = 'blank-hint';
@@ -5903,7 +5942,7 @@
     // en cours n'a plus de cadre à cibler, on la referme proprement
     if (croppingBlockId){ croppingBlockId = null; if (cropToolbarEl) cropToolbarEl.classList.remove('open'); }
     const side = isInterior(spread) ? currentVisibleSide() : null; // les couvertures n'ont qu'un seul côté, jamais de filtre gauche/droite
-    const spreadBlocks = blocksCache.filter(b => b.spread === spread && (!side || b.side === side));
+    const spreadBlocks = blocksCache.filter(b => b.spread === spread && (!side || b.side === side) && !b.hidden); // calques masqués : jamais affichés (voir toggleLayerHidden)
     spreadBlocks.forEach(buildBlockElement);
     if (typeof updateBlankHints === 'function') updateBlankHints();
     if (typeof renderLayerList === 'function') renderLayerList();
@@ -6832,6 +6871,7 @@
     clone.relX = Math.min(1 - clone.relW, clone.relX + 0.02);
     clone.relY = Math.min(1 - clone.relH, clone.relY + 0.02);
     delete clone.groupId; // ne rejoint pas silencieusement le groupe d'origine
+    if (clone.name) clone.name = clone.name + ' (copie)';
     blocksCache.push(clone);
     await persistBlocks();
     renderBlocksForSpread();
@@ -6884,10 +6924,10 @@
     if (b.type === 'shape') return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><circle cx="17.5" cy="6.5" r="4"/><path d="M12 21l4-8h-8l4 8Z"/></svg>';
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12h8M12 8v8"/></svg>';
   }
-  function layerRowLabel(b){
+  function layerAutoLabel(b){
     if (b.type === 'text'){
       const plain = (b.text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      return plain || 'Texte vide';
+      return plain ? plain.slice(0, 60) : 'Texte vide';
     }
     if (b.type === 'image') return 'Image';
     if (b.type === 'shape'){
@@ -6896,6 +6936,131 @@
     if (b.type === 'link') return b.label || b.href || 'Lien';
     return b.type;
   }
+  // nom affiché : celui choisi par l'artiste (double-clic pour renommer), sinon
+  // un libellé automatique déduit du contenu
+  function layerRowLabel(b){ return b.name || layerAutoLabel(b); }
+
+  const LAYER_LOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>';
+  const LAYER_UNLOCK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 017.5-2"/></svg>';
+  const LAYER_EYE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const LAYER_EYE_OFF_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/><path d="M3 21L21 3"/></svg>';
+
+  // Miniature d'une image : réduite une seule fois (canvas 56px) puis mise en
+  // cache — la liste est reconstruite souvent, redécoder à chaque fois une
+  // image en pleine taille pour ne dessiner que 26px serait inutilement lourd.
+  const layerThumbCache = new Map();
+  function layerThumbFor(src){
+    const key = src.startsWith('data:') ? 'd' + src.length + src.slice(-40) : src;
+    if (layerThumbCache.has(key)) return layerThumbCache.get(key);
+    const p = loadImageData(src).then(full => new Promise(resolve => {
+      if (!full){ resolve(''); return; }
+      const im = new Image();
+      im.onload = () => {
+        try{
+          const sc = Math.min(1, 56 / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(im.naturalWidth * sc));
+          c.height = Math.max(1, Math.round(im.naturalHeight * sc));
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          resolve(c.toDataURL('image/png'));
+        } catch(e){ resolve(full); } // image externe sans CORS : on garde l'original
+      };
+      im.onerror = () => resolve('');
+      im.src = full;
+    }));
+    layerThumbCache.set(key, p);
+    p.then(t => { if (!t) layerThumbCache.delete(key); });
+    return p;
+  }
+  function fillLayerThumb(thumb, b){
+    if (b.type === 'shape'){
+      thumb.classList.add('layer-row__thumb--shape');
+      thumb.innerHTML = shapeSVG(b.shapeType, b.color, { width: 0, radius: 0 }, null);
+      return;
+    }
+    thumb.innerHTML = `<span class="layer-row__icon">${layerRowIcon(b)}</span>`;
+    if (b.type === 'image' && b.src){
+      layerThumbFor(b.src).then(t => {
+        if (!t) return;
+        thumb.innerHTML = '';
+        thumb.style.backgroundImage = `url("${t}")`;
+      });
+    }
+  }
+  // couleur propre à chaque groupe (stable : dérivée de son identifiant)
+  function groupHue(gid){
+    let h = 0;
+    for (let i = 0; i < gid.length; i++) h = (h * 31 + gid.charCodeAt(i)) >>> 0;
+    return h % 360;
+  }
+
+  function isLayerPanelOpen(){ return document.getElementById('layerToolbar').classList.contains('open'); }
+  // met à jour le seul surlignage de la ligne sélectionnée, sans reconstruire
+  // la liste (une reconstruction à chaque clic empêcherait le double-clic de
+  // renommage d'atteindre la même ligne)
+  function syncLayerSelection(){
+    document.querySelectorAll('#layerList .layer-row').forEach(r => r.classList.toggle('selected', r.dataset.id === selectedBlockId));
+  }
+  // re-rendu après un changement d'état d'un calque (œil, cadenas) en
+  // conservant le contour de sélection du bloc actuellement sélectionné
+  function rerenderKeepingSelection(){
+    const sel = selectedBlockId;
+    renderBlocksForSpread();
+    if (sel) document.getElementById(sel)?.classList.add('selected');
+  }
+  async function toggleLayerLock(b){
+    pushUndo();
+    b.locked = !b.locked;
+    await persistBlocks();
+    rerenderKeepingSelection();
+  }
+  // Masquer = le calque n'est plus affiché, ni aux visiteurs ni en mode
+  // artiste (voir renderBlocksForSpread) ; il reste dans la liste, grisé,
+  // pour pouvoir le ré-afficher.
+  async function toggleLayerHidden(b){
+    pushUndo();
+    b.hidden = !b.hidden;
+    if (b.hidden && selectedBlockId === b.id) deselectBlock();
+    await persistBlocks();
+    rerenderKeepingSelection();
+  }
+  function startLayerRename(row, b){
+    const label = row.querySelector('.layer-row__label');
+    if (!label || row.querySelector('.layer-row__rename')) return;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'layer-row__rename';
+    input.maxLength = 40;
+    input.value = layerRowLabel(b);
+    input.setAttribute('aria-label', 'Nom du calque');
+    label.replaceWith(input);
+    input.focus();
+    input.select();
+    let done = false;
+    async function finish(commit){
+      if (done) return;
+      done = true;
+      if (commit){
+        const v = input.value.trim();
+        const next = (v && v !== layerAutoLabel(b)) ? v : ''; // nom vide ou identique à l'automatique : on revient à l'automatique
+        if ((b.name || '') !== next){
+          pushUndo();
+          if (next) b.name = next; else delete b.name;
+          await persistBlocks();
+        }
+      }
+      renderLayerList();
+    }
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation(); // ni raccourcis globaux, ni flèches de page pendant la saisie
+      if (e.key === 'Enter'){ e.preventDefault(); finish(true); }
+      else if (e.key === 'Escape'){ e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+    input.addEventListener('pointerdown', (e) => e.stopPropagation());
+    input.addEventListener('click', (e) => e.stopPropagation());
+  }
+
   function renderLayerList(){
     const list = document.getElementById('layerList');
     if (!list) return;
@@ -6913,19 +7078,72 @@
         header.textContent = side === 'left' ? 'Page gauche' : 'Page droite';
         list.appendChild(header);
       }
+      const groupNumbers = new Map(); // groupId -> n° affiché (G1, G2…) dans l'ordre d'apparition
       // premier plan en haut de liste (comme dans un logiciel de dessin) :
       // c'est la fin du tableau blocksCache, donc on affiche à l'envers.
       spreadBlocks.filter(b => b.side === side).slice().reverse().forEach(b => {
         const row = document.createElement('div');
-        row.className = 'layer-row' + (b.id === selectedBlockId ? ' selected' : '');
+        row.className = 'layer-row' + (b.id === selectedBlockId ? ' selected' : '') + (b.hidden ? ' is-hidden' : '') + (b.locked ? ' is-locked' : '');
         row.dataset.id = b.id;
         row.dataset.side = side;
         row.setAttribute('role', 'option');
         row.tabIndex = 0;
-        row.innerHTML = `<span class="layer-row__icon">${layerRowIcon(b)}</span><span class="layer-row__label">${escapeHTML(layerRowLabel(b))}</span>`;
-        row.addEventListener('click', () => selectBlock(b.id));
+
+        const thumb = document.createElement('span');
+        thumb.className = 'layer-row__thumb';
+        fillLayerThumb(thumb, b);
+        row.appendChild(thumb);
+
+        const label = document.createElement('span');
+        label.className = 'layer-row__label';
+        label.textContent = layerRowLabel(b);
+        label.title = 'Double-clic pour renommer';
+        row.appendChild(label);
+
+        if (b.groupId){
+          if (!groupNumbers.has(b.groupId)) groupNumbers.set(b.groupId, groupNumbers.size + 1);
+          const n = groupNumbers.get(b.groupId);
+          row.classList.add('in-group');
+          row.style.setProperty('--grp', `hsl(${groupHue(b.groupId)} 65% 50%)`);
+          const badge = document.createElement('span');
+          badge.className = 'layer-row__group';
+          badge.textContent = 'G' + n;
+          badge.title = `Groupe ${n} — ses membres se déplacent ensemble (Cmd/Ctrl+Alt+G pour dissocier)`;
+          row.appendChild(badge);
+        }
+
+        const lockBtn = document.createElement('button');
+        lockBtn.type = 'button';
+        lockBtn.className = 'layer-row__btn layer-row__lock' + (b.locked ? ' on' : '');
+        lockBtn.innerHTML = b.locked ? LAYER_LOCK_ICON : LAYER_UNLOCK_ICON;
+        lockBtn.setAttribute('aria-label', b.locked ? 'Déverrouiller ce calque' : 'Verrouiller ce calque');
+        lockBtn.setAttribute('aria-pressed', String(!!b.locked));
+        lockBtn.title = b.locked ? 'Déverrouiller' : 'Verrouiller';
+        lockBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleLayerLock(b); });
+        row.appendChild(lockBtn);
+
+        const eyeBtn = document.createElement('button');
+        eyeBtn.type = 'button';
+        eyeBtn.className = 'layer-row__btn layer-row__eye' + (b.hidden ? ' off' : '');
+        eyeBtn.innerHTML = b.hidden ? LAYER_EYE_OFF_ICON : LAYER_EYE_ICON;
+        eyeBtn.setAttribute('aria-label', b.hidden ? 'Afficher ce calque' : 'Masquer ce calque');
+        eyeBtn.setAttribute('aria-pressed', String(!b.hidden));
+        eyeBtn.title = b.hidden ? 'Afficher' : 'Masquer';
+        eyeBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleLayerHidden(b); });
+        row.appendChild(eyeBtn);
+
+        row.addEventListener('click', (e) => {
+          if (e.target.closest('.layer-row__btn, .layer-row__rename')) return;
+          selectBlock(b.id);
+        });
+        row.addEventListener('dblclick', (e) => {
+          if (!artistMode || e.target.closest('.layer-row__btn, .layer-row__rename')) return;
+          startLayerRename(row, b);
+        });
         row.addEventListener('keydown', (e) => {
+          if (e.target.closest('.layer-row__rename')) return;
           if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); selectBlock(b.id); }
+          else if (e.key === 'F2' && artistMode){ e.preventDefault(); startLayerRename(row, b); }
         });
         attachLayerRowDrag(row, side);
         list.appendChild(row);
@@ -6936,13 +7154,17 @@
   // DOM avant/après le voisin survolé, comparé au milieu de chaque ligne) ;
   // la nouvelle position n'est reportée dans blocksCache qu'au relâchement,
   // en relisant l'ordre final du DOM pour ce seul côté — jamais pendant le
-  // glisser, pour ne pas persister à chaque pixel de mouvement.
+  // glisser, pour ne pas persister à chaque pixel de mouvement. Un simple
+  // clic (ou un glisser revenu à l'ordre de départ) n'écrit rien du tout.
   function attachLayerRowDrag(row, side){
-    let dragging = false;
+    let dragging = false, startOrder = '';
+    const orderOf = () => Array.from(document.querySelectorAll(`#layerList .layer-row[data-side="${side}"]`)).map(r => r.dataset.id).join(',');
     row.addEventListener('pointerdown', (e) => {
       if (!artistMode) return;
+      if (e.target.closest('.layer-row__btn, .layer-row__rename')) return; // boutons et saisie : pas de glisser
       dragging = true;
       uiDragActive = true;
+      startOrder = orderOf();
       row.classList.add('dragging');
       try{ row.setPointerCapture(e.pointerId); } catch(err){}
       e.preventDefault();
@@ -6966,6 +7188,7 @@
       uiDragActive = false;
       row.classList.remove('dragging');
       try{ row.releasePointerCapture(e.pointerId); } catch(err){}
+      if (orderOf() === startOrder) return; // rien n'a bougé
       const list = document.getElementById('layerList');
       // haut de liste = premier plan -> on ré-inverse pour retrouver l'ordre
       // de stockage (fin du tableau = premier plan), voir renderLayerList().
@@ -6975,7 +7198,7 @@
       const rest = blocksCache.filter(x => !(x.spread === spread && x.side === side));
       blocksCache = [...rest, ...reordered];
       await persistBlocks();
-      renderBlocksForSpread();
+      rerenderKeepingSelection();
     }
     row.addEventListener('pointerup', endDrag);
     row.addEventListener('pointercancel', endDrag);
@@ -7093,7 +7316,7 @@
   }
   function selectBlock(id){
     selectedBlockId = id;
-    setLayerPanelOpen(true);
+    if (isLayerPanelOpen()) syncLayerSelection(); else setLayerPanelOpen(true);
     styleUndoPending = false; // nouvelle sélection = nouveau groupe d'annulation pour le style
     imgBorderUndoPending = false;
     shapeBorderUndoPending = false;
@@ -7151,7 +7374,7 @@
     imgBorderUndoPending = false;
     shapeBorderUndoPending = false;
     document.querySelectorAll('.content-block').forEach(n => n.classList.remove('selected', 'group-sibling-highlight'));
-    if (document.getElementById('layerToolbar').classList.contains('open')) renderLayerList(); // efface le surlignage, sans refermer le panneau
+    syncLayerSelection(); // efface le surlignage dans la liste, sans refermer le panneau
     clearMultiSelect();
   }
   document.addEventListener('click', (e) => {
@@ -7309,7 +7532,7 @@
     // blocs (texte/image) et post-it de cette page, remis dans l'ordre
     // naturel de lecture (haut en bas, puis gauche à droite en cas d'égalité)
     const items = [];
-    blocksCache.filter(b => b.spread === s && b.side === side && (b.type === 'text' || b.type === 'image'))
+    blocksCache.filter(b => b.spread === s && b.side === side && !b.hidden && (b.type === 'text' || b.type === 'image'))
       .forEach(b => items.push({ y: b.relY, x: b.relX, node: buildInclusiveBlockNode(b) }));
     postitsCache.filter(p => p.spread === s && p.side === side)
       .forEach(p => items.push({ y: p.relY, x: p.relX, node: buildInclusivePostitNode(p) }));
